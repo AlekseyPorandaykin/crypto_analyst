@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  pg:
+    image: postgres
+    restart: always
+    ports:
+#      - "3308:3306"
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: crypto_analyst
+      POSTGRES_USER: crypto_analyst
+      POSTGRES_PASSWORD: developer
+      PGDATA: /data/pgdata
+    volumes:
+      - ./storage/postgres:/data/pgdata
+    networks:
+      - application_network
+  prometheus:
+      image: prom/prometheus:latest
+      container_name: prometheus
+      volumes:
+        - ./storage/prometheus:/prometheus
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--storage.tsdb.retention=200h' #Чистим TSDB каждый 200ч
+        - '--web.enable-lifecycle'
+      restart: unless-stopped
+      expose:
+        - 9090
+      ports:
+        - "9090:9090"
+        - "64000:64000"
+      networks:
+        - application_network
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - ./storage/grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - application_network
+networks:
+  application_network:
+    driver: bridge

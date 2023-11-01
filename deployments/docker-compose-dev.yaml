@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  ubuntu:
+    build:
+      context: ./
+      dockerfile: ubuntu.Dockerfile
+    volumes:
+      - ./../:/app
+    tty: true

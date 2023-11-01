@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package event;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./;specification";
+
+message SymbolPrice{
+  string exchange = 1;
+  string symbol = 2;
+  float price = 3;
+  google.protobuf.Timestamp date = 4;
+}
+
+message SymbolPrices{
+  repeated SymbolPrice prices = 1;
+}
+
+message EmptyRequest {}
+
+message DurationSeconds{
+  int64 second = 1;
+}
+
+service EventService {
+  rpc Prices(EmptyRequest) returns (SymbolPrices);
+  rpc TickerPrices(DurationSeconds) returns(stream SymbolPrices);
+}
