@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS price_changes
     symbol     VARCHAR(50)      NOT NULL,
     exchange   VARCHAR(50)      NOT NULL,
     datetime   VARCHAR(50)      NOT NULL,
-    afg_value  INTEGER          NOT NULL DEFAULT 0,
+    afg_value  BIGINT          NOT NULL DEFAULT 0,
     price      double precision NOT NULL DEFAULT 0,
     prev_price double precision NOT NULL DEFAULT 0,
     created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP
