@@ -42,6 +42,6 @@ linters:
 	gofmt -s -l $(git ls-files '*.go')
 
 migrate:
-	docker-compose --file=$(DOCKER_DIR) exec pg psql -U crypto_analyst -d crypto_analyst -c "$(MIGRATE_SQL)"
+	docker-compose --file=$(DOCKER_DIR) exec pg psql -U crypto_app -d crypto_app -c "$(MIGRATE_SQL)"
 
 .PHONY: build run build-img run-img version test lint

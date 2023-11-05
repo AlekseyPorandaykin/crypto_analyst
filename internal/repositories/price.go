@@ -23,7 +23,7 @@ func (repo *PriceRepository) PopularSymbols(ctx context.Context, limit int) ([]s
 SELECT 
     symbol, count(exchange) 
 FROM (
-	SELECT DISTINCT symbol, exchange FROM prices
+	SELECT DISTINCT symbol, exchange FROM crypto_analyst.prices
 	 ) as temp_table 
 GROUP BY symbol
 `
@@ -52,12 +52,12 @@ GROUP BY symbol
 	return symbols, nil
 }
 
-func (repo *PriceRepository) FirstDatetime(ctx context.Context) (time.Time, error) {
+func (repo *PriceRepository) FirstDatetime(ctx context.Context, symbol string) (time.Time, error) {
 	var (
-		query     = `SELECT min(datetime) FROM prices`
+		query     = `SELECT min(datetime) FROM crypto_analyst.prices WHERE symbol = $1 `
 		firstDate time.Time
 	)
-	if err := repo.db.GetContext(ctx, &firstDate, query); err != nil {
+	if err := repo.db.GetContext(ctx, &firstDate, query, symbol); err != nil {
 		return time.Time{}, err
 	}
 	return firstDate, nil
@@ -68,7 +68,7 @@ func (repo *PriceRepository) SymbolPrices(ctx context.Context, symbol string, fr
 		query = `
 SELECT 
     price, symbol, exchange, datetime 
-FROM prices 
+FROM crypto_analyst.prices 
 WHERE symbol = $1 
   AND (datetime BETWEEN $2 AND $3)  
 ORDER BY  datetime ASC
@@ -81,11 +81,31 @@ ORDER BY  datetime ASC
 	return result, nil
 }
 
-func (repo *PriceRepository) DeleteOldData(ctx context.Context, to time.Time) error {
+func (repo *PriceRepository) DeleteOldPrices(ctx context.Context, symbol string, to time.Time) error {
 	var query = `
-DELETE FROM prices WHERE datetime < $1
+DELETE FROM crypto_analyst.prices WHERE symbol = $1 
+  AND datetime < $2
+`
+	_, err := repo.db.ExecContext(ctx, query, symbol, to)
+
+	return err
+}
+
+func (repo *PriceRepository) ClearOldPrices(ctx context.Context, to time.Time) error {
+	var query = `
+DELETE FROM crypto_analyst.prices WHERE  datetime < $1
 `
 	_, err := repo.db.ExecContext(ctx, query, to)
+
+	return err
+}
+
+func (repo *PriceRepository) DeletePrices(ctx context.Context, symbol string, from, to time.Time) error {
+	var query = `
+DELETE FROM crypto_analyst.prices WHERE symbol = $1 
+  AND (datetime BETWEEN $2 AND $3)  
+`
+	_, err := repo.db.ExecContext(ctx, query, symbol, from, to)
 
 	return err
 }
@@ -107,7 +127,7 @@ func (repo *PriceRepository) SavePrices(ctx context.Context, prices []*domain.Sy
 		)
 	}
 	query := fmt.Sprintf(
-		"INSERT INTO prices(price, symbol,exchange,datetime) VALUES %s ON CONFLICT (price, symbol, exchange, datetime) DO NOTHING",
+		"INSERT INTO crypto_analyst.prices(price, symbol,exchange,datetime) VALUES %s ON CONFLICT (price, symbol, exchange, datetime) DO NOTHING",
 		strings.Join(values, ", "),
 	)
 	_, err := repo.db.ExecContext(ctx, query)

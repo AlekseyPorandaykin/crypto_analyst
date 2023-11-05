@@ -11,7 +11,7 @@ type SymbolPrice struct {
 	Date     time.Time `json:"date" db:"datetime"`
 }
 
-type AfgCoefficient struct {
+type PriceChange struct {
 	Date      time.Time `json:"date" db:"datetime"`
 	Symbol    string    `json:"symbol" db:"symbol"`
 	Exchange  string    `json:"exchange" db:"exchange"`
@@ -19,4 +19,17 @@ type AfgCoefficient struct {
 	Price     float64   `json:"price" db:"price"`
 	PrevPrice float64   `json:"prevPrice" db:"prev_price"`
 	CreatedAt time.Time `json:"createdAt" db:"created_at"`
+}
+
+func ToDatetimeWithoutSec(val time.Time) time.Time {
+	return time.Date(
+		val.Year(),
+		val.Month(),
+		val.Day(),
+		val.Hour(),
+		val.Minute(),
+		0,
+		0,
+		val.Location(),
+	)
 }

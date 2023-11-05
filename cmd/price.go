@@ -16,16 +16,17 @@ import (
 var priceCmd = &cobra.Command{
 	Use: "price",
 	Run: func(cmd *cobra.Command, args []string) {
-		const DefaultRecalculateDuration = time.Hour
+		const DefaultRecalculateDuration = 5 * time.Minute
+		const DefaultLoadPriceDurationSec = 60
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
 		db, err := repositories.CreateDB(repositories.Config{
 			Driver:   "postgres",
-			Username: "crypto_analyst",
+			Username: "crypto_app",
 			Password: "developer",
 			Host:     "localhost",
-			Port:     "5434",
-			Database: "crypto_analyst",
+			Port:     "5433",
+			Database: "crypto_app",
 		})
 		if err != nil {
 			fmt.Println("Error init database: ", err.Error())
@@ -34,10 +35,10 @@ var priceCmd = &cobra.Command{
 		defer func() { _ = db.Close() }()
 		priceRepo := repositories.NewPriceRepository(db)
 		priceChangesRepo := repositories.NewPriceChanges(db)
-		ap := price.NewPrice(priceRepo, priceChangesRepo)
+		calculatorApp := price.NewChangeCalculator(priceRepo, priceChangesRepo)
 
-		l := loader.NewLoader("localhost:50052")
-		loaderPrice := price.NewLoader(l, priceRepo)
+		loaderApp := loader.NewLoader("localhost:50052")
+		loaderPrice := price.NewLoader(loaderApp, priceRepo)
 		go func() {
 			defer cancel()
 			if err := loaderPrice.Run(ctx); err != nil && errors.Is(err, context.Canceled) {
@@ -46,13 +47,13 @@ var priceCmd = &cobra.Command{
 		}()
 		go func() {
 			defer cancel()
-			if err := l.Start(ctx, 60); err != nil && errors.Is(err, context.Canceled) {
+			if err := loaderApp.Start(ctx, DefaultLoadPriceDurationSec); err != nil && errors.Is(err, context.Canceled) {
 				fmt.Printf("error execute loader: %s \n", err.Error())
 			}
 		}()
 		go func() {
 			defer cancel()
-			if err := ap.Run(ctx, DefaultRecalculateDuration); err != nil {
+			if err := calculatorApp.Run(ctx, DefaultRecalculateDuration); err != nil {
 				fmt.Printf("error execute app: %s \n", err.Error())
 			}
 		}()

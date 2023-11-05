@@ -21,11 +21,11 @@ func NewPriceChanges(db *sqlx.DB) *PriceChanges {
 	}
 }
 
-func (repo *PriceChanges) Save(ctx context.Context, data []domain.AfgCoefficient) error {
+func (repo *PriceChanges) Save(ctx context.Context, data []domain.PriceChange) error {
 	var (
 		query = `
 INSERT INTO 
-    price_changes(symbol, exchange, datetime, afg_value, price, prev_price, created_at) 
+    crypto_analyst.price_changes(symbol, exchange, datetime, afg_value, price, prev_price, created_at) 
 VALUES %s ON CONFLICT (symbol, exchange, datetime) DO NOTHING
 `
 		params []string
@@ -52,11 +52,67 @@ VALUES %s ON CONFLICT (symbol, exchange, datetime) DO NOTHING
 
 func (repo *PriceChanges) LastDatetimeRow(ctx context.Context) (time.Time, error) {
 	var (
-		query    = `SELECT coalesce(max(created_at), NOW() - INTERVAL '1 year') FROM price_changes`
+		query    = `SELECT coalesce(max(created_at), NOW()) FROM crypto_analyst.price_changes`
 		datetime time.Time
 	)
 	if err := repo.db.GetContext(ctx, &datetime, query); err != nil {
 		return time.Time{}, err
 	}
 	return datetime, nil
+}
+
+func (repo *PriceChanges) LastDatetimeSymbolRow(ctx context.Context, symbol string) (time.Time, error) {
+	var (
+		query    = `SELECT max(created_at) FROM crypto_analyst.price_changes WHERE symbol = $1`
+		datetime time.Time
+	)
+	if err := repo.db.GetContext(ctx, &datetime, query, symbol); err != nil {
+		return time.Time{}, err
+	}
+	return datetime, nil
+}
+
+func (repo *PriceChanges) FirstDatetimeRow(ctx context.Context) (time.Time, error) {
+	var (
+		query    = `SELECT TO_TIMESTAMP(datetime, 'YYYY/MM/DD/HH24:MI:ss') FROM crypto_analyst.price_changes ORDER BY datetime LIMIT 1`
+		datetime time.Time
+	)
+	if err := repo.db.GetContext(ctx, &datetime, query); err != nil {
+		return time.Time{}, err
+	}
+	datetime.In(time.Now().Location())
+	return datetime, nil
+}
+
+func (repo *PriceChanges) List(ctx context.Context, symbol string, from, to time.Time) ([]domain.PriceChange, error) {
+	var (
+		query = `
+SELECT symbol,
+       exchange,
+       TO_TIMESTAMP(datetime, 'YYYY/MM/DD/HH24:MI:ss') as datetime,
+       afg_value,
+       price,
+       prev_price,
+       created_at
+FROM crypto_analyst.price_changes
+WHERE symbol = $1
+  AND created_at::DATE BETWEEN $2 AND $3
+`
+		res []domain.PriceChange
+	)
+	if err := repo.db.SelectContext(ctx, &res, query, symbol, from, to); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (repo *PriceChanges) Exchanges(ctx context.Context) ([]string, error) {
+	var (
+		query = `SELECT DISTINCT exchange FROM crypto_analyst.price_changes ORDER BY exchange`
+		res   []string
+	)
+	if err := repo.db.SelectContext(ctx, &res, query); err != nil {
+		return nil, err
+	}
+	return res, nil
 }

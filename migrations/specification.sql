@@ -1,4 +1,6 @@
-CREATE TABLE IF NOT EXISTS prices
+CREATE SCHEMA IF NOT EXISTS crypto_analyst;
+
+CREATE TABLE IF NOT EXISTS crypto_analyst.prices
 (
     price      double precision NOT NULL,
     symbol     VARCHAR(50)      NOT NULL,
@@ -7,15 +9,15 @@ CREATE TABLE IF NOT EXISTS prices
     updated_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX ON prices (price, symbol, exchange, datetime);
+CREATE UNIQUE INDEX ON crypto_analyst.prices (price, symbol, exchange, datetime);
 
-CREATE INDEX exchange_idx ON prices (exchange);
-CREATE INDEX symbol_idx ON prices (symbol);
+CREATE INDEX exchange_idx ON crypto_analyst.prices (exchange);
+CREATE INDEX symbol_idx ON crypto_analyst.prices (symbol);
 
-alter table prices
-    owner to crypto_analyst;
+alter table crypto_analyst.prices
+    owner to crypto_app;
 
-CREATE TABLE IF NOT EXISTS price_changes
+CREATE TABLE IF NOT EXISTS crypto_analyst.price_changes
 (
     symbol     VARCHAR(50)      NOT NULL,
     exchange   VARCHAR(50)      NOT NULL,
@@ -26,11 +28,11 @@ CREATE TABLE IF NOT EXISTS price_changes
     created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX ON price_changes (symbol, exchange, datetime);
+CREATE UNIQUE INDEX ON crypto_analyst.price_changes (symbol, exchange, datetime);
 
-CREATE INDEX price_changes_exchange_idx ON price_changes (exchange);
-CREATE INDEX price_changes_symbol_idx ON price_changes (symbol);
-CREATE INDEX price_changes_datetime_idx ON price_changes (datetime);
+CREATE INDEX price_changes_exchange_idx ON crypto_analyst.price_changes (exchange);
+CREATE INDEX price_changes_symbol_idx ON crypto_analyst.price_changes (symbol);
+CREATE INDEX price_changes_datetime_idx ON crypto_analyst.price_changes (datetime);
 
-alter table price_changes
-    owner to crypto_analyst;
+alter table crypto_analyst.price_changes
+    owner to crypto_app;
