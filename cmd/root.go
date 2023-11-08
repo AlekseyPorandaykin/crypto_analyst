@@ -12,9 +12,10 @@ var PriceCmd = &cobra.Command{
 	Use:   "price",
 	Short: "Price analyst",
 }
+var ServerCmd = &cobra.Command{Use: "server"}
 
 func init() {
-	rootCmd.AddCommand(PriceCmd)
+	rootCmd.AddCommand(PriceCmd, ServerCmd)
 }
 
 func Execute() {

@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-const DatetimeFormat = "2006-01-02 15:04:05"
-
 type PriceChanges struct {
 	db *sqlx.DB
 }
@@ -25,7 +23,7 @@ func (repo *PriceChanges) Save(ctx context.Context, data []domain.PriceChange) e
 	var (
 		query = `
 INSERT INTO 
-    crypto_analyst.price_changes(symbol, exchange, datetime, afg_value, price, prev_price, created_at) 
+    crypto_analyst.price_changes(symbol, exchange, datetime, coefficient_change, price, prev_price, created_at) 
 VALUES %s ON CONFLICT (symbol, exchange, datetime) DO NOTHING
 `
 		params []string
@@ -38,7 +36,7 @@ VALUES %s ON CONFLICT (symbol, exchange, datetime) DO NOTHING
 				item.Symbol,
 				item.Exchange,
 				item.Date.Format(DatetimeFormat),
-				item.AfgValue,
+				item.CoefficientOfChange,
 				item.Price,
 				item.PrevPrice,
 				item.CreatedAt.Format(DatetimeFormat),
@@ -90,13 +88,13 @@ func (repo *PriceChanges) List(ctx context.Context, symbol string, from, to time
 SELECT symbol,
        exchange,
        TO_TIMESTAMP(datetime, 'YYYY/MM/DD/HH24:MI:ss') as datetime,
-       afg_value,
+       coefficient_change,
        price,
        prev_price,
        created_at
 FROM crypto_analyst.price_changes
 WHERE symbol = $1
-  AND created_at::DATE BETWEEN $2 AND $3
+  AND created_at>= $2 AND created_at<=$3
 `
 		res []domain.PriceChange
 	)

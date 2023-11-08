@@ -36,25 +36,30 @@ func (l *Loader) Start(ctx context.Context, durationSec int64) error {
 		grpc.MaxRecvMsgSizeCallOption{1024 * 1024 * 10},
 	)
 	for {
-		symbols, err := r.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		batch := NewBatch(len(symbols.Prices))
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			symbols, err := r.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			batch := NewBatch(len(symbols.Prices))
 
-		if err != nil {
-			return err
+			zap.L().Debug("load prices from crypto_loader", zap.Int("count", len(symbols.Prices)))
+			for _, item := range symbols.GetPrices() {
+				batch.Append(&domain.SymbolPrice{
+					Exchange: item.GetExchange(),
+					Symbol:   item.GetSymbol(),
+					Price:    item.GetPrice(),
+					Date:     item.GetDate().AsTime(),
+				})
+			}
+			l.batchCh <- batch
 		}
-		zap.L().Debug("load prices from crypto_loader", zap.Int("count", len(symbols.Prices)))
-		for _, item := range symbols.GetPrices() {
-			batch.Append(&domain.SymbolPrice{
-				Exchange: item.GetExchange(),
-				Symbol:   item.GetSymbol(),
-				Price:    item.GetPrice(),
-				Date:     item.GetDate().AsTime(),
-			})
-		}
-		l.batchCh <- batch
 	}
 }
 

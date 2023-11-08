@@ -17,6 +17,7 @@ var priceCmd = &cobra.Command{
 	Use: "price",
 	Run: func(cmd *cobra.Command, args []string) {
 		const DefaultRecalculateDuration = 5 * time.Minute
+		const DefaultPriceAggregationDuration = 1 * time.Hour
 		const DefaultLoadPriceDurationSec = 60
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
@@ -35,10 +36,15 @@ var priceCmd = &cobra.Command{
 		defer func() { _ = db.Close() }()
 		priceRepo := repositories.NewPriceRepository(db)
 		priceChangesRepo := repositories.NewPriceChanges(db)
-		calculatorApp := price.NewChangeCalculator(priceRepo, priceChangesRepo)
+		symbolRepo := repositories.NewSymbols(db)
+		aggregationRepo := repositories.NewAggregation(db)
+
+		calculatorApp := price.NewChangeCalculator(priceRepo, priceChangesRepo, symbolRepo)
 
 		loaderApp := loader.NewLoader("localhost:50052")
 		loaderPrice := price.NewLoader(loaderApp, priceRepo)
+		aggregationPrice := price.NewAggregation(priceChangesRepo, aggregationRepo, symbolRepo)
+
 		go func() {
 			defer cancel()
 			if err := loaderPrice.Run(ctx); err != nil && errors.Is(err, context.Canceled) {
@@ -57,6 +63,8 @@ var priceCmd = &cobra.Command{
 				fmt.Printf("error execute app: %s \n", err.Error())
 			}
 		}()
+
+		go aggregationPrice.Run(ctx, DefaultPriceAggregationDuration)
 
 		<-ctx.Done()
 	},

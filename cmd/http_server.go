@@ -2,17 +2,19 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/price"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/server/http"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
-var calculateCmd = &cobra.Command{
-	Use: "calculate",
+var httpServerCmd = &cobra.Command{
+	Use:   "http",
+	Short: "Run http web server",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
@@ -29,16 +31,21 @@ var calculateCmd = &cobra.Command{
 			return
 		}
 		defer func() { _ = db.Close() }()
-
 		symbolRepo := repositories.NewSymbols(db)
 		priceChangesRepo := repositories.NewPriceChanges(db)
 		calc := price.NewCalculate(symbolRepo, priceChangesRepo)
-		if err := calc.ReportAvg(ctx, time.Now().Add(-10*24*time.Hour), time.Now()); err != nil {
-			zap.L().Error("Error calculate", zap.Error(err))
-		}
+		serv := http.NewServer(calc)
+		go func() {
+			defer cancel()
+			if err := serv.Run(":8082"); err != nil {
+				fmt.Println("error execute server: ", err.Error())
+			}
+		}()
+		fmt.Println("server run")
+		<-ctx.Done()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(calculateCmd)
+	ServerCmd.AddCommand(httpServerCmd)
 }

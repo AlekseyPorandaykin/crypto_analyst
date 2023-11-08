@@ -5,6 +5,7 @@ import (
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/duke-git/lancet/v2/mathutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"time"
@@ -13,14 +14,18 @@ import (
 type exchangePrices map[time.Time]map[string]float64
 
 type ChangeCalculator struct {
+	symbolRepo       *repositories.Symbols
 	priceRepo        *repositories.PriceRepository
 	priceChangesRepo *repositories.PriceChanges
 }
 
 func NewChangeCalculator(
 	priceRepo *repositories.PriceRepository,
-	priceChangesRepo *repositories.PriceChanges) *ChangeCalculator {
-	return &ChangeCalculator{priceRepo: priceRepo, priceChangesRepo: priceChangesRepo}
+	priceChangesRepo *repositories.PriceChanges,
+	symbolRepo *repositories.Symbols) *ChangeCalculator {
+	return &ChangeCalculator{
+		priceRepo: priceRepo, priceChangesRepo: priceChangesRepo, symbolRepo: symbolRepo,
+	}
 }
 
 func (p *ChangeCalculator) Run(ctx context.Context, d time.Duration) error {
@@ -52,13 +57,12 @@ func (p *ChangeCalculator) execute(ctx context.Context) error {
 }
 
 func (p *ChangeCalculator) calculate(ctx context.Context) error {
-	symbols, err := p.priceRepo.PopularSymbols(ctx, 3)
+	symbols, err := p.symbolRepo.PopularSymbols(ctx, 3)
 	if err != nil {
 		return errors.Wrap(err, "get all symbols")
 	}
 	for _, symbol := range symbols {
-		zap.L().Debug("run avg_coefficient", zap.String("symbolPriceChanges", symbol))
-		p.runAvgCoefficient(ctx, symbol)
+		p.calculatePriceChanges(ctx, symbol)
 	}
 	if err := p.priceRepo.ClearOldPrices(ctx, time.Now().In(time.UTC).Add(-1*time.Hour)); err != nil {
 		zap.L().Error("error clear old prices", zap.Error(err))
@@ -66,7 +70,7 @@ func (p *ChangeCalculator) calculate(ctx context.Context) error {
 	return nil
 }
 
-func (p *ChangeCalculator) runAvgCoefficient(ctx context.Context, symbol string) {
+func (p *ChangeCalculator) calculatePriceChanges(ctx context.Context, symbol string) {
 	from := p.lastUpdateDatetime(ctx, symbol)
 	if from.IsZero() {
 		return
@@ -91,15 +95,10 @@ func (p *ChangeCalculator) runAvgCoefficient(ctx context.Context, symbol string)
 			break
 		}
 
-		coefficients := p.calculateAvgCoefficient(data, keys, symbol)
+		coefficients := p.priceChanges(data, keys, symbol)
 
-		zap.L().Debug(
-			"save avg_coefficient",
-			zap.String("symbolPriceChanges", symbol),
-			zap.Int("count", len(coefficients)),
-		)
 		if err := p.priceChangesRepo.Save(ctx, coefficients); err != nil {
-			zap.L().Error("save avg_coefficient", zap.Error(err))
+			zap.L().Error("save CoefficientOfChange", zap.Error(err))
 			break
 		}
 
@@ -125,12 +124,6 @@ func (p *ChangeCalculator) loadSymbolData(ctx context.Context, symbol string, fr
 	if err != nil {
 		return nil, nil, err
 	}
-	zap.L().Debug("loaded symbolPriceChanges prices",
-		zap.String("symbolPriceChanges", symbol),
-		zap.Time("from", from),
-		zap.Time("to", to),
-		zap.Int("count", len(symbolPrices)),
-	)
 	for _, symbolPrice := range symbolPrices {
 		key := domain.ToDatetimeWithoutSec(symbolPrice.Date)
 
@@ -143,21 +136,29 @@ func (p *ChangeCalculator) loadSymbolData(ctx context.Context, symbol string, fr
 	}
 	return data, keys, nil
 }
-func (p *ChangeCalculator) calculateAvgCoefficient(data exchangePrices, keys []time.Time, symbol string) []domain.PriceChange {
+func (p *ChangeCalculator) priceChanges(data exchangePrices, keys []time.Time, symbol string) []domain.PriceChange {
 	prevValues := make(map[string]float64)
 	result := make([]domain.PriceChange, 0, len(keys))
 	for _, key := range keys {
 		for exchange, val := range data[key] {
 			if _, ok := prevValues[exchange]; ok {
-				r := int((val - prevValues[exchange]) / val * 10000)
+				var coefficientOfChanges int64
+				currentPrice := mathutil.RoundToFloat(val, 10)
+				prevPrice := mathutil.RoundToFloat(prevValues[exchange], 10)
+				if currentPrice > 0 && prevPrice > 0 {
+					coefficientOfChanges = int64((currentPrice - prevPrice) / currentPrice * 10000)
+				}
+				if coefficientOfChanges > 100_000 || coefficientOfChanges < -100_000 {
+					coefficientOfChanges = 0
+				}
 				result = append(result, domain.PriceChange{
-					Date:      key,
-					Symbol:    symbol,
-					Exchange:  exchange,
-					AfgValue:  int64(r),
-					Price:     val,
-					PrevPrice: prevValues[exchange],
-					CreatedAt: time.Now().In(time.UTC),
+					Date:                key,
+					Symbol:              symbol,
+					Exchange:            exchange,
+					CoefficientOfChange: coefficientOfChanges,
+					Price:               val,
+					PrevPrice:           prevValues[exchange],
+					CreatedAt:           time.Now().In(time.UTC),
 				})
 			}
 		}

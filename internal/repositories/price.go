@@ -17,41 +17,6 @@ func NewPriceRepository(db *sqlx.DB) *PriceRepository {
 	return &PriceRepository{db: db}
 }
 
-func (repo *PriceRepository) PopularSymbols(ctx context.Context, limit int) ([]string, error) {
-	var (
-		query = `
-SELECT 
-    symbol, count(exchange) 
-FROM (
-	SELECT DISTINCT symbol, exchange FROM crypto_analyst.prices
-	 ) as temp_table 
-GROUP BY symbol
-`
-		symbols []string
-	)
-	rows, err := repo.db.QueryxContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var (
-			symbol string
-			count  int
-		)
-		if err := rows.Scan(&symbol, &count); err != nil {
-			return nil, err
-		}
-		if count >= limit {
-			symbols = append(symbols, symbol)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return symbols, nil
-}
-
 func (repo *PriceRepository) FirstDatetime(ctx context.Context, symbol string) (time.Time, error) {
 	var (
 		query     = `SELECT min(datetime) FROM crypto_analyst.prices WHERE symbol = $1 `
