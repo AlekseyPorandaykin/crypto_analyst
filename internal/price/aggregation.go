@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"math"
@@ -13,21 +14,21 @@ import (
 
 type ExchangePriceChanges map[string][]domain.PriceChange
 
-type Aggregation struct {
+type MetricCalculator struct {
 	priceChangesRepo *repositories.PriceChanges
 	symbolsRepo      *repositories.Symbols
 	repo             *repositories.Aggregation
 }
 
-func NewAggregation(
+func NewMetricCalculator(
 	priceChangesRepo *repositories.PriceChanges,
 	repo *repositories.Aggregation,
 	symbolsRepo *repositories.Symbols,
-) *Aggregation {
-	return &Aggregation{priceChangesRepo: priceChangesRepo, repo: repo, symbolsRepo: symbolsRepo}
+) *MetricCalculator {
+	return &MetricCalculator{priceChangesRepo: priceChangesRepo, repo: repo, symbolsRepo: symbolsRepo}
 }
 
-func (s *Aggregation) Run(ctx context.Context, d time.Duration) {
+func (s *MetricCalculator) Run(ctx context.Context, d time.Duration) {
 	changeCoefficientMetrics := []domain.MetricAggregationPrice{
 		domain.ChangeCoefficientOnHour,
 		domain.ChangeCoefficientOnDay,
@@ -82,7 +83,7 @@ func (s *Aggregation) Run(ctx context.Context, d time.Duration) {
 	}
 }
 
-func (s *Aggregation) executeChangeCoefficient(
+func (s *MetricCalculator) executeChangeCoefficient(
 	ctx context.Context, metric domain.MetricAggregationPrice) error {
 	defer func(start time.Time) {
 		zap.L().Info(
@@ -103,8 +104,11 @@ func (s *Aggregation) executeChangeCoefficient(
 		}
 		prices := s.changeCoefficient(priceChanges, symbol, metric)
 		if len(prices) > 0 {
-			if err := s.repo.Save(ctx, prices...); err != nil {
-				return errors.Wrap(err, "save price_aggregation")
+			errSave := backoff.Retry(func() error {
+				return s.repo.Save(ctx, prices...)
+			}, backoff.NewExponentialBackOff())
+			if errSave != nil {
+				return errors.Wrap(errSave, "save change_coefficient")
 			}
 		}
 	}
@@ -112,7 +116,7 @@ func (s *Aggregation) executeChangeCoefficient(
 	return nil
 }
 
-func (s *Aggregation) executeIndicatorChanges(
+func (s *MetricCalculator) executeIndicatorChanges(
 	ctx context.Context, metric domain.MetricAggregationPrice) error {
 	defer func(start time.Time) {
 		zap.L().Info(
@@ -133,8 +137,11 @@ func (s *Aggregation) executeIndicatorChanges(
 		}
 		prices := s.indicatorChanges(priceChanges, symbol, metric)
 		if len(prices) > 0 {
-			if err := s.repo.Save(ctx, prices...); err != nil {
-				return errors.Wrap(err, "save price_aggregation")
+			errSave := backoff.Retry(func() error {
+				return s.repo.Save(ctx, prices...)
+			}, backoff.NewExponentialBackOff())
+			if errSave != nil {
+				return errors.Wrap(errSave, "save indicator_changes")
 			}
 		}
 	}
@@ -142,7 +149,7 @@ func (s *Aggregation) executeIndicatorChanges(
 	return nil
 }
 
-func (s *Aggregation) listPriceChanges(ctx context.Context, symbol string, from *time.Time) (ExchangePriceChanges, error) {
+func (s *MetricCalculator) listPriceChanges(ctx context.Context, symbol string, from *time.Time) (ExchangePriceChanges, error) {
 	res := make(ExchangePriceChanges)
 	if from == nil {
 		firstDate, err := s.priceChangesRepo.FirstDatetimeRow(ctx)
@@ -161,7 +168,7 @@ func (s *Aggregation) listPriceChanges(ctx context.Context, symbol string, from 
 	return res, nil
 }
 
-func (s *Aggregation) changeCoefficient(
+func (s *MetricCalculator) changeCoefficient(
 	data map[string][]domain.PriceChange, symbol string, metric domain.MetricAggregationPrice,
 ) []domain.PriceAggregation {
 	res := make([]domain.PriceAggregation, 0, len(data))
@@ -188,10 +195,11 @@ func (s *Aggregation) changeCoefficient(
 	return res
 }
 
-func (s *Aggregation) indicatorChanges(
+func (s *MetricCalculator) indicatorChanges(
 	data map[string][]domain.PriceChange, symbol string, metric domain.MetricAggregationPrice,
 ) []domain.PriceAggregation {
 	res := make([]domain.PriceAggregation, 0, len(data))
+	dedublication := make(map[string]bool)
 	for exchange, priceChanges := range data {
 		timeCoefficients := make(map[time.Time][]float64)
 		for _, priceChange := range priceChanges {
@@ -202,14 +210,19 @@ func (s *Aggregation) indicatorChanges(
 			timeCoefficients[key] = append(timeCoefficients[key], math.Abs(float64(priceChange.CoefficientOfChange)))
 		}
 		for key, item := range timeCoefficients {
-			res = append(res, domain.PriceAggregation{
+			pa := domain.PriceAggregation{
 				Symbol:    symbol,
 				Exchange:  exchange,
 				Metric:    metric,
 				Key:       key.Format(time.DateTime),
 				Value:     fmt.Sprintf("%.2f", avgValue(item)),
 				UpdatedAt: time.Now().In(time.UTC),
-			})
+			}
+			if dedublication[pa.UniqKey()] {
+				continue
+			}
+			res = append(res, pa)
+			dedublication[pa.UniqKey()] = true
 		}
 	}
 	return res
@@ -227,7 +240,7 @@ func changeCoefficientKeyByMetric(metric domain.MetricAggregationPrice, val time
 	return time.Time{}
 }
 
-func (s *Aggregation) lastTimeUpdateMetric(
+func (s *MetricCalculator) lastTimeUpdateMetric(
 	ctx context.Context, metric domain.MetricAggregationPrice, symbol string,
 ) *time.Time {
 	priceAggr, err := s.repo.LastRow(ctx, string(metric), symbol)

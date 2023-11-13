@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type MetricAggregationPrice string
 
@@ -21,4 +24,8 @@ type PriceAggregation struct {
 	Key       string                 `json:"key" db:"key"`
 	Value     string                 `json:"value" db:"value"`
 	UpdatedAt time.Time              `json:"updated_at" db:"updated_at"`
+}
+
+func (pa PriceAggregation) UniqKey() string {
+	return fmt.Sprintf("%s-%s-%s-%s", pa.Symbol, pa.Exchange, pa.Metric, pa.Key)
 }

@@ -97,8 +97,11 @@ func (p *ChangeCalculator) calculatePriceChanges(ctx context.Context, symbol str
 
 		coefficients := p.priceChanges(data, keys, symbol)
 
-		if err := p.priceChangesRepo.Save(ctx, coefficients); err != nil {
-			zap.L().Error("save CoefficientOfChange", zap.Error(err))
+		errSave := backoff.Retry(func() error {
+			return p.priceChangesRepo.Save(ctx, coefficients)
+		}, backoff.NewExponentialBackOff())
+		if errSave != nil {
+			zap.L().Error("save CoefficientOfChange", zap.Error(errSave))
 			break
 		}
 

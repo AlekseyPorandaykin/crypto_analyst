@@ -43,7 +43,7 @@ var priceCmd = &cobra.Command{
 
 		loaderApp := loader.NewLoader("localhost:50052")
 		loaderPrice := price.NewLoader(loaderApp, priceRepo)
-		aggregationPrice := price.NewAggregation(priceChangesRepo, aggregationRepo, symbolRepo)
+		metricCalculator := price.NewMetricCalculator(priceChangesRepo, aggregationRepo, symbolRepo)
 
 		go func() {
 			defer cancel()
@@ -64,7 +64,7 @@ var priceCmd = &cobra.Command{
 			}
 		}()
 
-		go aggregationPrice.Run(ctx, DefaultPriceAggregationDuration)
+		go metricCalculator.Run(ctx, DefaultPriceAggregationDuration)
 
 		<-ctx.Done()
 	},
