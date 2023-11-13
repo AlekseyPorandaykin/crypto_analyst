@@ -1,27 +1,27 @@
-package http
+package price
 
 import (
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/price"
 	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
 	"net/http"
 	"time"
 )
 
 const DatetimeFormat = "2006-01-02 15:04:05"
 
-type Handler struct {
-	calculate *price.Calculate
+type Controller struct {
+	calculate *Calculate
 }
 
-func NewHandler(calculate *price.Calculate) *Handler {
-	return &Handler{calculate: calculate}
+func NewController(calculate *Calculate) *Controller {
+	return &Controller{calculate: calculate}
 }
 
-func (h *Handler) RegistrationRoute(e *echo.Echo) {
-	e.GET("/price", h.priceCoefficient)
+func (app *Controller) RegistrationRoute(e *echo.Echo) {
+	e.GET("/price", app.priceCoefficient)
 }
 
-func (h *Handler) priceCoefficient(c echo.Context) error {
+func (app *Controller) priceCoefficient(c echo.Context) error {
 	params := &struct {
 		Symbol string `json:"symbol" query:"symbol"`
 		From   string `json:"from" query:"from"`
@@ -29,6 +29,9 @@ func (h *Handler) priceCoefficient(c echo.Context) error {
 	}{}
 	if err := c.Bind(params); err != nil {
 		return err
+	}
+	if params.Symbol == "" {
+		return errors.New("empty symbol")
 	}
 	from, err := time.Parse(DatetimeFormat, params.From)
 	if err != nil {
@@ -38,7 +41,7 @@ func (h *Handler) priceCoefficient(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.calculate.ReportPriceChanges(
+	res, err := app.calculate.ReportPriceChanges(
 		c.Request().Context(),
 		params.Symbol,
 		from.In(time.UTC),

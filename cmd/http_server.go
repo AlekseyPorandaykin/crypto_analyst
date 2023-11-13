@@ -34,7 +34,9 @@ var httpServerCmd = &cobra.Command{
 		symbolRepo := repositories.NewSymbols(db)
 		priceChangesRepo := repositories.NewPriceChanges(db)
 		calc := price.NewCalculate(symbolRepo, priceChangesRepo)
-		serv := http.NewServer(calc)
+		priceController := price.NewController(calc)
+		serv := http.NewServer()
+		serv.Registration(priceController)
 		go func() {
 			defer cancel()
 			if err := serv.Run(":8082"); err != nil {

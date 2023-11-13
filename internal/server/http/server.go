@@ -1,21 +1,25 @@
 package http
 
 import (
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/price"
 	"github.com/labstack/echo/v4"
 )
+
+type Handler interface {
+	RegistrationRoute(e *echo.Echo)
+}
 
 type Server struct {
 	e *echo.Echo
 }
 
-func NewServer(calculate *price.Calculate) *Server {
-	e := echo.New()
-	h := NewHandler(calculate)
-	h.RegistrationRoute(e)
+func NewServer() *Server {
 	return &Server{
-		e: e,
+		e: echo.New(),
 	}
+}
+
+func (s *Server) Registration(h Handler) {
+	h.RegistrationRoute(s.e)
 }
 
 func (s *Server) Run(address string) error {
