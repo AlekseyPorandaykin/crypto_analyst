@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/client/loader"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/price"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
+	"github.com/AlekseyPorandaykin/crypto_loader/api/grpc/client"
 	"github.com/spf13/cobra"
 	"os/signal"
 	"syscall"
@@ -41,7 +41,7 @@ var priceCmd = &cobra.Command{
 
 		calculatorApp := price.NewChangeCalculator(priceRepo, priceChangesRepo, symbolRepo)
 
-		loaderApp := loader.NewLoader("localhost:50052")
+		loaderApp := client.NewLoader("localhost:50052")
 		loaderPrice := price.NewLoader(loaderApp, priceRepo)
 		metricCalculator := price.NewMetricCalculator(priceChangesRepo, aggregationRepo, symbolRepo)
 
