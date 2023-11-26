@@ -3,10 +3,12 @@ package price
 import (
 	"context"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
 	"github.com/AlekseyPorandaykin/crypto_loader/api/grpc/client"
 	"github.com/cenkalti/backoff/v4"
 	"go.uber.org/zap"
+	"time"
 )
 
 type Loader struct {
@@ -24,6 +26,7 @@ func (l *Loader) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case batch := <-l.loader.Batch():
+			start := time.Now()
 			sourcePrices := batch.Prices()
 			prices := make([]*domain.SymbolPrice, 0, len(sourcePrices))
 			for _, item := range sourcePrices {
@@ -40,6 +43,8 @@ func (l *Loader) Run(ctx context.Context) error {
 			if err != nil {
 				zap.L().Error("error save prices", zap.Error(err))
 			}
+			metric.SavePriceDuration.Add(float64(time.Since(start).Milliseconds()))
+			metric.SavePrices.Add(float64(len(prices)))
 		}
 	}
 }

@@ -3,6 +3,7 @@ package price
 import (
 	"context"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/duke-git/lancet/v2/mathutil"
@@ -49,7 +50,7 @@ func (p *ChangeCalculator) Run(ctx context.Context, d time.Duration) error {
 
 func (p *ChangeCalculator) execute(ctx context.Context) error {
 	defer func(start time.Time) {
-		zap.L().Info("ChangeCalculator analysis calculated", zap.String("execute_sec", time.Since(start).String()))
+		metric.ChangePriceCalculateDuration.Add(float64(time.Since(start).Milliseconds()))
 	}(time.Now())
 	return backoff.Retry(func() error {
 		return p.calculate(ctx)
@@ -61,6 +62,7 @@ func (p *ChangeCalculator) calculate(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "get all symbols")
 	}
+	metric.PopularSymbols.Add(float64(len(symbols)))
 	for _, symbol := range symbols {
 		p.calculatePriceChanges(ctx, symbol)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
@@ -84,25 +85,21 @@ func (s *MetricCalculator) Run(ctx context.Context, d time.Duration) {
 }
 
 func (s *MetricCalculator) executeChangeCoefficient(
-	ctx context.Context, metric domain.MetricAggregationPrice) error {
+	ctx context.Context, m domain.MetricAggregationPrice) error {
 	defer func(start time.Time) {
-		zap.L().Info(
-			"ChangeCoefficient analysis calculated",
-			zap.String("metric", string(metric)),
-			zap.String("execute_sec", time.Since(start).String()),
-		)
+		metric.CoefficientDuration.WithLabelValues(string(m)).Add(float64(time.Since(start).Milliseconds()))
 	}(time.Now())
 	symbols, err := s.symbolsRepo.List(ctx)
 	if err != nil {
 		return errors.Wrap(err, "get all symbols")
 	}
 	for _, symbol := range symbols {
-		from := s.lastTimeUpdateMetric(ctx, metric, symbol)
+		from := s.lastTimeUpdateMetric(ctx, m, symbol)
 		priceChanges, err := s.listPriceChanges(ctx, symbol, from)
 		if err != nil {
 			return errors.Wrap(err, "get price changes")
 		}
-		prices := s.changeCoefficient(priceChanges, symbol, metric)
+		prices := s.changeCoefficient(priceChanges, symbol, m)
 		if len(prices) > 0 {
 			errSave := backoff.Retry(func() error {
 				return s.repo.Save(ctx, prices...)
@@ -117,25 +114,21 @@ func (s *MetricCalculator) executeChangeCoefficient(
 }
 
 func (s *MetricCalculator) executeIndicatorChanges(
-	ctx context.Context, metric domain.MetricAggregationPrice) error {
+	ctx context.Context, m domain.MetricAggregationPrice) error {
 	defer func(start time.Time) {
-		zap.L().Info(
-			"IndicatorChanges analysis calculated",
-			zap.String("metric", string(metric)),
-			zap.String("execute_sec", time.Since(start).String()),
-		)
+		metric.CoefficientDuration.WithLabelValues(string(m)).Add(float64(time.Since(start).Milliseconds()))
 	}(time.Now())
 	symbols, err := s.symbolsRepo.List(ctx)
 	if err != nil {
 		return errors.Wrap(err, "get all symbols")
 	}
 	for _, symbol := range symbols {
-		from := s.lastTimeUpdateMetric(ctx, metric, symbol)
+		from := s.lastTimeUpdateMetric(ctx, m, symbol)
 		priceChanges, err := s.listPriceChanges(ctx, symbol, from)
 		if err != nil {
 			return errors.Wrap(err, "get price changes")
 		}
-		prices := s.indicatorChanges(priceChanges, symbol, metric)
+		prices := s.indicatorChanges(priceChanges, symbol, m)
 		if len(prices) > 0 {
 			errSave := backoff.Retry(func() error {
 				return s.repo.Save(ctx, prices...)
