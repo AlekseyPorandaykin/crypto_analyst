@@ -101,3 +101,7 @@ func (repo *PriceRepository) SavePrices(ctx context.Context, prices []*domain.Sy
 	}
 	return nil
 }
+
+func (repo *PriceRepository) Prices(ctx context.Context, symbol string) ([]domain.SymbolPrice, error) {
+	return nil, nil
+}

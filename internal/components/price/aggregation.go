@@ -82,6 +82,24 @@ func (s *MetricCalculator) Run(ctx context.Context, d time.Duration) {
 			}
 		}(metric)
 	}
+
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := s.repo.DeleteOldRows(ctx, time.Now().Add(-30*24*time.Hour)); err != nil {
+					zap.L().Error(
+						"error delete old change coefficient",
+						zap.Error(err),
+					)
+				}
+			}
+		}
+	}()
 }
 
 func (s *MetricCalculator) executeChangeCoefficient(

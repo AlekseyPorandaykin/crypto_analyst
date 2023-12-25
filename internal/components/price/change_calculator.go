@@ -30,22 +30,41 @@ func NewChangeCalculator(
 }
 
 func (p *ChangeCalculator) Run(ctx context.Context, d time.Duration) error {
+	errCh := make(chan error)
 	if err := p.execute(ctx); err != nil {
 		return err
 	}
-	ticker := time.NewTicker(d)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			if err := p.execute(ctx); err != nil {
-				return err
+	go func() {
+		ticker := time.NewTicker(d)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+			case <-ticker.C:
+				if err := p.execute(ctx); err != nil {
+					errCh <- err
+				}
+				ticker.Reset(d)
 			}
-			ticker.Reset(d)
 		}
-	}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+			case <-ticker.C:
+				if err := p.priceChangesRepo.DeleteOldRows(ctx, time.Now().Add(-7*24*time.Hour)); err != nil {
+					errCh <- errors.Wrap(err, "error delete old rows price_changes")
+				}
+			}
+		}
+	}()
+	return <-errCh
 }
 
 func (p *ChangeCalculator) execute(ctx context.Context) error {

@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"strings"
+	"time"
 )
 
 type Aggregation struct {
@@ -62,4 +63,13 @@ DO  UPDATE SET value = EXCLUDED.value, updated_at=EXCLUDED.updated_at ;
 		return err
 	}
 	return nil
+}
+
+func (repo *Aggregation) DeleteOldRows(ctx context.Context, to time.Time) error {
+	var query = `
+DELETE FROM crypto_analyst.price_aggregation WHERE  updated_at < $1
+`
+	_, err := repo.db.ExecContext(ctx, query, to)
+
+	return err
 }

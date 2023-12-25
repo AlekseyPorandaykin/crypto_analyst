@@ -39,4 +39,9 @@ var (
 		Name:      "save_price",
 		Help:      "The total save prices",
 	})
+	SaveSnapshot = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "crypto_analyst",
+		Name:      "save_snapshot",
+		Help:      "The total save snapshot",
+	})
 )

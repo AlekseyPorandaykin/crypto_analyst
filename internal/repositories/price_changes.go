@@ -114,3 +114,12 @@ func (repo *PriceChanges) Exchanges(ctx context.Context) ([]string, error) {
 	}
 	return res, nil
 }
+
+func (repo *PriceChanges) DeleteOldRows(ctx context.Context, to time.Time) error {
+	var query = `
+DELETE FROM crypto_analyst.price_changes WHERE  datetime < $1
+`
+	_, err := repo.db.ExecContext(ctx, query, to)
+
+	return err
+}

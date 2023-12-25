@@ -8,7 +8,7 @@ import (
 type SymbolPrice struct {
 	Exchange string    `json:"exchange" db:"exchange"`
 	Symbol   string    `json:"symbol" db:"symbol"`
-	Price    float32   `json:"price" db:"price"`
+	Price    float64   `json:"price" db:"price"`
 	Date     time.Time `json:"date" db:"datetime"`
 }
 
