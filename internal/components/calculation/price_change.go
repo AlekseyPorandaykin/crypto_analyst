@@ -1,10 +1,10 @@
-package price
+package calculation
 
 import (
 	"context"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/duke-git/lancet/v2/mathutil"
 	"github.com/pkg/errors"
@@ -14,22 +14,22 @@ import (
 
 type exchangePrices map[time.Time]map[string]float64
 
-type ChangeCalculator struct {
-	symbolRepo       *repositories.Symbols
-	priceRepo        *repositories.PriceRepository
-	priceChangesRepo *repositories.PriceChanges
+type PriceChange struct {
+	symbolRepo       *db.Symbols
+	priceRepo        *db.PriceRepository
+	priceChangesRepo *db.PriceChanges
 }
 
 func NewChangeCalculator(
-	priceRepo *repositories.PriceRepository,
-	priceChangesRepo *repositories.PriceChanges,
-	symbolRepo *repositories.Symbols) *ChangeCalculator {
-	return &ChangeCalculator{
+	priceRepo *db.PriceRepository,
+	priceChangesRepo *db.PriceChanges,
+	symbolRepo *db.Symbols) *PriceChange {
+	return &PriceChange{
 		priceRepo: priceRepo, priceChangesRepo: priceChangesRepo, symbolRepo: symbolRepo,
 	}
 }
 
-func (p *ChangeCalculator) Run(ctx context.Context, d time.Duration) error {
+func (p *PriceChange) Run(ctx context.Context, d time.Duration) error {
 	errCh := make(chan error)
 	if err := p.execute(ctx); err != nil {
 		return err
@@ -67,7 +67,7 @@ func (p *ChangeCalculator) Run(ctx context.Context, d time.Duration) error {
 	return <-errCh
 }
 
-func (p *ChangeCalculator) execute(ctx context.Context) error {
+func (p *PriceChange) execute(ctx context.Context) error {
 	defer func(start time.Time) {
 		metric.ChangePriceCalculateDuration.Add(float64(time.Since(start).Milliseconds()))
 	}(time.Now())
@@ -76,7 +76,7 @@ func (p *ChangeCalculator) execute(ctx context.Context) error {
 	}, backoff.NewExponentialBackOff())
 }
 
-func (p *ChangeCalculator) calculate(ctx context.Context) error {
+func (p *PriceChange) calculate(ctx context.Context) error {
 	symbols, err := p.symbolRepo.PopularSymbols(ctx, 3)
 	if err != nil {
 		return errors.Wrap(err, "get all symbols")
@@ -86,12 +86,12 @@ func (p *ChangeCalculator) calculate(ctx context.Context) error {
 		p.calculatePriceChanges(ctx, symbol)
 	}
 	if err := p.priceRepo.ClearOldPrices(ctx, time.Now().In(time.UTC).Add(-1*time.Hour)); err != nil {
-		zap.L().Error("error clear old prices", zap.Error(err))
+		zap.L().Error("error clear old symbolPrice", zap.Error(err))
 	}
 	return nil
 }
 
-func (p *ChangeCalculator) calculatePriceChanges(ctx context.Context, symbol string) {
+func (p *PriceChange) calculatePriceChanges(ctx context.Context, symbol string) {
 	from := p.lastUpdateDatetime(ctx, symbol)
 	if from.IsZero() {
 		return
@@ -107,6 +107,10 @@ func (p *ChangeCalculator) calculatePriceChanges(ctx context.Context, symbol str
 				zap.Time("from", from),
 			)
 		}
+		if len(data) == 0 && from.Before(time.Now()) {
+			from = from.Add(24 * time.Hour)
+			continue
+		}
 		for date := range data {
 			if date.After(to) {
 				to = date
@@ -118,16 +122,18 @@ func (p *ChangeCalculator) calculatePriceChanges(ctx context.Context, symbol str
 
 		coefficients := p.priceChanges(data, keys, symbol)
 
-		errSave := backoff.Retry(func() error {
-			return p.priceChangesRepo.Save(ctx, coefficients)
-		}, backoff.NewExponentialBackOff())
-		if errSave != nil {
-			zap.L().Error("save CoefficientOfChange", zap.Error(errSave))
-			break
+		if len(coefficients) > 0 {
+			errSave := backoff.Retry(func() error {
+				return p.priceChangesRepo.Save(ctx, coefficients)
+			}, backoff.NewExponentialBackOff())
+			if errSave != nil {
+				zap.L().Error("save CoefficientOfChange", zap.Error(errSave))
+				break
+			}
 		}
 
 		if err := p.priceRepo.DeletePrices(ctx, symbol, from, to.Add(-5*time.Minute)); err != nil {
-			zap.L().Error("error delete prices", zap.Error(err))
+			zap.L().Error("error delete symbolPrice", zap.Error(err))
 			break
 		}
 		if !to.After(from) {
@@ -137,11 +143,11 @@ func (p *ChangeCalculator) calculatePriceChanges(ctx context.Context, symbol str
 	}
 
 	if err := p.priceRepo.DeleteOldPrices(ctx, symbol, from.Add(-15*time.Minute)); err != nil {
-		zap.L().Error("error delete old prices", zap.Error(err))
+		zap.L().Error("error delete old symbolPrice", zap.Error(err))
 	}
 }
 
-func (p *ChangeCalculator) loadSymbolData(ctx context.Context, symbol string, from, to time.Time) (exchangePrices, []time.Time, error) {
+func (p *PriceChange) loadSymbolData(ctx context.Context, symbol string, from, to time.Time) (exchangePrices, []time.Time, error) {
 	data := make(exchangePrices)
 	keys := make([]time.Time, 0, 100)
 	symbolPrices, err := p.priceRepo.SymbolPrices(ctx, symbol, from, to)
@@ -160,7 +166,7 @@ func (p *ChangeCalculator) loadSymbolData(ctx context.Context, symbol string, fr
 	}
 	return data, keys, nil
 }
-func (p *ChangeCalculator) priceChanges(data exchangePrices, keys []time.Time, symbol string) []domain.PriceChange {
+func (p *PriceChange) priceChanges(data exchangePrices, keys []time.Time, symbol string) []domain.PriceChange {
 	prevValues := make(map[string]float64)
 	result := make([]domain.PriceChange, 0, len(keys))
 	for _, key := range keys {
@@ -195,7 +201,7 @@ func (p *ChangeCalculator) priceChanges(data exchangePrices, keys []time.Time, s
 	return result
 }
 
-func (p *ChangeCalculator) lastUpdateDatetime(ctx context.Context, symbol string) time.Time {
+func (p *PriceChange) lastUpdateDatetime(ctx context.Context, symbol string) time.Time {
 	lastDatetime, err := p.priceChangesRepo.LastDatetimeSymbolRow(ctx, symbol)
 	if err != nil {
 		zap.L().Error("init last update avg coefficient datetime", zap.Error(err))

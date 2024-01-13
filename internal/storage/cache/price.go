@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage"
 	"github.com/hashicorp/golang-lru/v2"
 	"sync"
 	"time"
 )
 
-var _ storage.PriceStorage = (*Price)(nil)
+var _ domain.PriceStorage = (*Price)(nil)
 
 type Price struct {
 	lastPrices  map[string][]domain.SymbolPrice
@@ -22,19 +21,19 @@ type Price struct {
 
 func NewPrice() *Price {
 	return &Price{
-		lastPrices: make(map[string][]domain.SymbolPrice, 1000),
-		prices:     make(map[string]*lru.Cache[time.Time, domain.SymbolPrice], 1000),
+		lastPrices: make(map[string][]domain.SymbolPrice, 1_000),
+		prices:     make(map[string]*lru.Cache[time.Time, domain.SymbolPrice], 1_000),
 	}
 }
 
 func (c *Price) SavePrices(ctx context.Context, prices []*domain.SymbolPrice) error {
 	c.muCachePrices.Lock()
 	defer c.muCachePrices.Unlock()
-	newPrices := make(map[string][]domain.SymbolPrice, 1000)
+	newPrices := make(map[string][]domain.SymbolPrice, 1_000)
 	for _, price := range prices {
 		key := fmt.Sprintf("%s-%s", price.Exchange, price.Symbol)
 		if _, has := c.prices[key]; !has {
-			lruCache, err := lru.New[time.Time, domain.SymbolPrice](1500)
+			lruCache, err := lru.New[time.Time, domain.SymbolPrice](1_500)
 			if err != nil {
 				return err
 			}

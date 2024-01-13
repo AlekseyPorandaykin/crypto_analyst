@@ -1,4 +1,4 @@
-package repositories
+package db
 
 import (
 	"context"
@@ -103,5 +103,21 @@ func (repo *PriceRepository) SavePrices(ctx context.Context, prices []*domain.Sy
 }
 
 func (repo *PriceRepository) Prices(ctx context.Context, symbol string) ([]domain.SymbolPrice, error) {
-	return nil, nil
+	var (
+		query = `
+SELECT price, symbol, exchange, datetime 
+FROM crypto_analyst.prices
+WHERE updated_at = (SELECT updated_at
+                    FROM crypto_analyst.prices
+                    ORDER BY updated_at DESC
+                    LIMIT 1)
+AND symbol = $1 
+ORDER BY exchange ASC
+`
+		result []domain.SymbolPrice
+	)
+	if err := repo.db.SelectContext(ctx, &result, query, symbol); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

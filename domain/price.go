@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"github.com/duke-git/lancet/v2/datetime"
 	"time"
 )
@@ -85,4 +86,21 @@ func ToDatetimeWithoutDay(val time.Time) time.Time {
 		0,
 		time.UTC,
 	)
+}
+
+type PriceStorage interface {
+	PriceSaver
+	PriceLoader
+}
+
+type PriceSaver interface {
+	SavePrices(ctx context.Context, prices []*SymbolPrice) error
+}
+
+type PriceLoader interface {
+	Prices(ctx context.Context, symbol string) ([]SymbolPrice, error)
+}
+
+type PriceChangeLoader interface {
+	Changes(ctx context.Context, exchange, symbol string, from, to time.Time) ([]PriceChange, error)
 }

@@ -1,11 +1,11 @@
-package price
+package calculation
 
 import (
 	"context"
 	"fmt"
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -15,21 +15,21 @@ import (
 
 type ExchangePriceChanges map[string][]domain.PriceChange
 
-type MetricCalculator struct {
-	priceChangesRepo *repositories.PriceChanges
-	symbolsRepo      *repositories.Symbols
-	repo             *repositories.Aggregation
+type ChangeCoefficient struct {
+	priceChangesRepo *db.PriceChanges
+	symbolsRepo      *db.Symbols
+	repo             *db.Aggregation
 }
 
-func NewMetricCalculator(
-	priceChangesRepo *repositories.PriceChanges,
-	repo *repositories.Aggregation,
-	symbolsRepo *repositories.Symbols,
-) *MetricCalculator {
-	return &MetricCalculator{priceChangesRepo: priceChangesRepo, repo: repo, symbolsRepo: symbolsRepo}
+func NewChangeCoefficient(
+	priceChangesRepo *db.PriceChanges,
+	repo *db.Aggregation,
+	symbolsRepo *db.Symbols,
+) *ChangeCoefficient {
+	return &ChangeCoefficient{priceChangesRepo: priceChangesRepo, repo: repo, symbolsRepo: symbolsRepo}
 }
 
-func (s *MetricCalculator) Run(ctx context.Context, d time.Duration) {
+func (s *ChangeCoefficient) Run(ctx context.Context, d time.Duration) {
 	changeCoefficientMetrics := []domain.MetricAggregationPrice{
 		domain.ChangeCoefficientOnHour,
 		domain.ChangeCoefficientOnDay,
@@ -91,7 +91,7 @@ func (s *MetricCalculator) Run(ctx context.Context, d time.Duration) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if err := s.repo.DeleteOldRows(ctx, time.Now().Add(-30*24*time.Hour)); err != nil {
+				if err := s.repo.DeleteOldRows(ctx, time.Now().Add(-7*24*time.Hour)); err != nil {
 					zap.L().Error(
 						"error delete old change coefficient",
 						zap.Error(err),
@@ -102,7 +102,7 @@ func (s *MetricCalculator) Run(ctx context.Context, d time.Duration) {
 	}()
 }
 
-func (s *MetricCalculator) executeChangeCoefficient(
+func (s *ChangeCoefficient) executeChangeCoefficient(
 	ctx context.Context, m domain.MetricAggregationPrice) error {
 	defer func(start time.Time) {
 		metric.CoefficientDuration.WithLabelValues(string(m)).Add(float64(time.Since(start).Milliseconds()))
@@ -131,7 +131,7 @@ func (s *MetricCalculator) executeChangeCoefficient(
 	return nil
 }
 
-func (s *MetricCalculator) executeIndicatorChanges(
+func (s *ChangeCoefficient) executeIndicatorChanges(
 	ctx context.Context, m domain.MetricAggregationPrice) error {
 	defer func(start time.Time) {
 		metric.CoefficientDuration.WithLabelValues(string(m)).Add(float64(time.Since(start).Milliseconds()))
@@ -160,7 +160,7 @@ func (s *MetricCalculator) executeIndicatorChanges(
 	return nil
 }
 
-func (s *MetricCalculator) listPriceChanges(ctx context.Context, symbol string, from *time.Time) (ExchangePriceChanges, error) {
+func (s *ChangeCoefficient) listPriceChanges(ctx context.Context, symbol string, from *time.Time) (ExchangePriceChanges, error) {
 	res := make(ExchangePriceChanges)
 	if from == nil {
 		firstDate, err := s.priceChangesRepo.FirstDatetimeRow(ctx)
@@ -179,7 +179,7 @@ func (s *MetricCalculator) listPriceChanges(ctx context.Context, symbol string, 
 	return res, nil
 }
 
-func (s *MetricCalculator) changeCoefficient(
+func (s *ChangeCoefficient) changeCoefficient(
 	data map[string][]domain.PriceChange, symbol string, metric domain.MetricAggregationPrice,
 ) []domain.PriceAggregation {
 	res := make([]domain.PriceAggregation, 0, len(data))
@@ -206,7 +206,7 @@ func (s *MetricCalculator) changeCoefficient(
 	return res
 }
 
-func (s *MetricCalculator) indicatorChanges(
+func (s *ChangeCoefficient) indicatorChanges(
 	data map[string][]domain.PriceChange, symbol string, metric domain.MetricAggregationPrice,
 ) []domain.PriceAggregation {
 	res := make([]domain.PriceAggregation, 0, len(data))
@@ -251,7 +251,7 @@ func changeCoefficientKeyByMetric(metric domain.MetricAggregationPrice, val time
 	return time.Time{}
 }
 
-func (s *MetricCalculator) lastTimeUpdateMetric(
+func (s *ChangeCoefficient) lastTimeUpdateMetric(
 	ctx context.Context, metric domain.MetricAggregationPrice, symbol string,
 ) *time.Time {
 	priceAggr, err := s.repo.LastRow(ctx, string(metric), symbol)

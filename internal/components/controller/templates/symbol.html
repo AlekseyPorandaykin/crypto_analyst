@@ -1,0 +1,29 @@
+<main>
+    <div class="container marketing">
+        <hr class="featurette-divider">
+        <h2>Symbol {{.Symbol}}</h2>
+        <hr class="featurette-divider">
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Exchange</th>
+      <th scope="col">Price</th>
+      <th scope="col">Date</th>
+      <th scope="col">Action</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{ range .Data}}
+    <tr>
+      <th scope="row">{{.Exchange}}</th>
+      <td>{{.Price}}</td>
+      <td>{{.Date.Format "2006-01-02 15:04:05"}}</td>
+       <td>
+           <a class="nav-link" href="/price/{{.Exchange}}/{{.Symbol}}/changes"><button type="button" class="btn btn-secondary">Changes</button></a>
+       </td>
+    </tr>
+  {{ end }}
+  </tbody>
+</table>
+    </div>
+</main>

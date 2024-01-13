@@ -7,16 +7,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type Composite struct {
-	fastStorage     PriceStorage
-	longTermStorage PriceStorage
+type PriceComposite struct {
+	fastStorage     domain.PriceStorage
+	longTermStorage domain.PriceStorage
 }
 
-func NewComposite(fastStorage, longTermStorage PriceStorage) *Composite {
-	return &Composite{fastStorage: fastStorage, longTermStorage: longTermStorage}
+func NewComposite(fastStorage, longTermStorage domain.PriceStorage) *PriceComposite {
+	return &PriceComposite{fastStorage: fastStorage, longTermStorage: longTermStorage}
 }
 
-func (c *Composite) SavePrices(ctx context.Context, prices []*domain.SymbolPrice) error {
+func (c *PriceComposite) SavePrices(ctx context.Context, prices []*domain.SymbolPrice) error {
 	if err := c.fastStorage.SavePrices(ctx, prices); err != nil {
 		return errors.Wrap(err, "error save in fastStorage")
 	}
@@ -28,21 +28,21 @@ func (c *Composite) SavePrices(ctx context.Context, prices []*domain.SymbolPrice
 	return nil
 }
 
-func (c *Composite) Prices(ctx context.Context, symbol string) ([]domain.SymbolPrice, error) {
+func (c *PriceComposite) Prices(ctx context.Context, symbol string) ([]domain.SymbolPrice, error) {
 	var (
 		prices []domain.SymbolPrice
 		err    error
 	)
 	prices, err = c.fastStorage.Prices(ctx, symbol)
 	if err != nil {
-		zap.L().Error("error get prices from fastStorage")
+		zap.L().Error("error get symbolPrice from fastStorage")
 	}
 	if len(prices) > 0 {
 		return prices, nil
 	}
 	prices, err = c.longTermStorage.Prices(ctx, symbol)
 	if err != nil {
-		zap.L().Error("error get prices from longTermStorage")
+		zap.L().Error("error get symbolPrice from longTermStorage")
 		return nil, err
 	}
 	return prices, nil

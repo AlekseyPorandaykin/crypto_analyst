@@ -1,4 +1,4 @@
-package repositories
+package db
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type Config struct {
 	Database string
 }
 
-func CreateDB(conf Config) (*sqlx.DB, error) {
+func CreateConnect(conf Config) (*sqlx.DB, error) {
 	conn, err := sqlx.Connect(
 		"pgx",
 		fmt.Sprintf(

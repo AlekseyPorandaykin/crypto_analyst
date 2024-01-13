@@ -1,0 +1,27 @@
+<main>
+    <div class="container marketing">
+        <hr class="featurette-divider">
+        <h2>Symbol {{.Symbol}}</h2>
+        <hr class="featurette-divider">
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Price</th>
+                <th scope="col">Prev Price</th>
+                <th scope="col">Coefficient change</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{ range .Data}}
+            <tr>
+                <td scope="row">{{.Date.Format "2006-01-02 15:04:05"}}</td>
+                <td>{{.Price}}</td>
+                <td>{{.PrevPrice}}</td>
+                <td>{{.CoefficientOfChange}}</td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+    </div>
+</main>

@@ -59,3 +59,25 @@ CREATE UNIQUE INDEX ON crypto_analyst.price_aggregation (symbol, exchange, metri
 
 alter table crypto_analyst.price_aggregation
     owner to crypto_app;
+
+CREATE TABLE IF NOT EXISTS crypto_analyst.candlesticks
+(
+    symbol          VARCHAR(50)      NOT NULL,
+    exchange        VARCHAR(50)      NOT NULL DEFAULT '',
+    open_time       TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    close_time      TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    open_price      double precision NOT NULL DEFAULT 0,
+    high_price      double precision NOT NULL DEFAULT 0,
+    low_price       double precision NOT NULL DEFAULT 0,
+    close_price     double precision NOT NULL DEFAULT 0,
+    volume          double precision NOT NULL DEFAULT 0,
+    number_trades   INT              NOT NULL DEFAULT 0,
+    candle_interval VARCHAR(10)      NOT NULL,
+    created_at      TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX ON crypto_analyst.candlesticks (symbol, exchange, open_time, close_time, candle_interval);
+CREATE INDEX candlesticks_exchange_idx ON crypto_analyst.candlesticks (exchange);
+CREATE INDEX candlesticks_symbol_idx ON crypto_analyst.candlesticks (symbol);
+CREATE INDEX candlesticks_interval_idx ON crypto_analyst.candlesticks (candle_interval);

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/price"
-	"github.com/AlekseyPorandaykin/crypto_analyst/internal/repositories"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/calculation"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/controller"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/loader"
 	http_server "github.com/AlekseyPorandaykin/crypto_analyst/internal/server/http"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/cache"
+	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
 	"github.com/AlekseyPorandaykin/crypto_loader/api/http/client"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -21,11 +23,11 @@ import (
 var rootCmd = &cobra.Command{
 	Use: "price",
 	Run: func(cmd *cobra.Command, args []string) {
-		const DefaultRecalculateDuration = 5 * time.Minute
+		const DefaultRecalculateDuration = 5 * time.Second
 		const DefaultPriceAggregationDuration = 1 * time.Hour
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
-		db, err := repositories.CreateDB(repositories.Config{
+		connect, err := db.CreateConnect(db.Config{
 			Driver:   "postgres",
 			Username: "crypto_app",
 			Password: "developer",
@@ -37,13 +39,14 @@ var rootCmd = &cobra.Command{
 			fmt.Println("Error init database: ", err.Error())
 			return
 		}
-		defer func() { _ = db.Close() }()
-		priceRepo := repositories.NewPriceRepository(db)
-		priceChangesRepo := repositories.NewPriceChanges(db)
-		symbolRepo := repositories.NewSymbols(db)
-		aggregationRepo := repositories.NewAggregation(db)
+		defer func() { _ = connect.Close() }()
+		priceRepo := db.NewPriceRepository(connect)
+		priceChangesRepo := db.NewPriceChanges(connect)
 
-		calculatorApp := price.NewChangeCalculator(priceRepo, priceChangesRepo, symbolRepo)
+		symbolRepo := db.NewSymbols(connect)
+		aggregationRepo := db.NewAggregation(connect)
+
+		calculatorApp := calculation.NewChangeCalculator(priceRepo, priceChangesRepo, symbolRepo)
 
 		priceStorage := storage.NewComposite(cache.NewPrice(), priceRepo)
 
@@ -52,10 +55,18 @@ var rootCmd = &cobra.Command{
 			fmt.Println("Error init loader: ", err.Error())
 			return
 		}
-		loaderPrice := price.NewLoader(loaderApp, priceStorage)
-		metricCalculator := price.NewMetricCalculator(priceChangesRepo, aggregationRepo, symbolRepo)
+		candlestickRepo := db.NewCandlestick(connect)
+		candlestickCache := cache.NewCandlestick()
+		candlestickStorage := storage.NewCandlestickComposite(candlestickCache, candlestickRepo)
 
-		priceController := price.NewController(priceStorage)
+		loaderPrice := loader.NewLoader(loaderApp, priceStorage, candlestickStorage)
+		metricCalculator := calculation.NewChangeCoefficient(priceChangesRepo, aggregationRepo, symbolRepo)
+
+		priceController := controller.NewPrice(priceStorage, candlestickStorage, symbolRepo, priceChangesRepo)
+		if err != nil {
+			fmt.Println("Error init price controller: ", err.Error())
+			return
+		}
 		serv := http_server.NewServer()
 		serv.Registration(priceController)
 

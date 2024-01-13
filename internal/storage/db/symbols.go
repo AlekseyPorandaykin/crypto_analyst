@@ -1,4 +1,4 @@
-package repositories
+package db
 
 import (
 	"context"
@@ -15,7 +15,13 @@ func NewSymbols(db *sqlx.DB) *Symbols {
 
 func (repo *Symbols) List(ctx context.Context) ([]string, error) {
 	var (
-		query   = `SELECT DISTINCT symbol FROM crypto_analyst.prices`
+		query = `
+SELECT DISTINCT symbol
+FROM (SELECT symbol, count(*) as total
+      FROM crypto_analyst.prices
+      GROUP BY symbol
+      ORDER BY total DESC) AS temp
+`
 		symbols []string
 	)
 	if err := repo.db.SelectContext(ctx, &symbols, query); err != nil {
