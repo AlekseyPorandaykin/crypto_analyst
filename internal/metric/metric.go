@@ -46,4 +46,15 @@ var (
 		Name:      "save_snapshot",
 		Help:      "The total save snapshot",
 	})
+
+	SaveNewSymbolDuration = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Name:      "save_new_symbol_duration",
+		Help:      "The total duration save new symbol in ms",
+	})
+	SaveNewSymbol = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Name:      "save_new_symbol",
+		Help:      "The total save new symbol",
+	})
 )

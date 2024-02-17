@@ -20,14 +20,16 @@ type Loader struct {
 	client             *client.Client
 	priceStorage       domain.PriceSaver
 	candlestickStorage domain.CandlestickStorage
+	price              *Price
 }
 
 func NewLoader(
 	client *client.Client,
 	priceStorage domain.PriceSaver,
 	candlestickStorage domain.CandlestickStorage,
+	price *Price,
 ) *Loader {
-	return &Loader{client: client, priceStorage: priceStorage, candlestickStorage: candlestickStorage}
+	return &Loader{client: client, priceStorage: priceStorage, candlestickStorage: candlestickStorage, price: price}
 }
 
 func (l *Loader) Run(ctx context.Context) error {
@@ -46,6 +48,12 @@ func (l *Loader) Run(ctx context.Context) error {
 	}()
 	go func() {
 		if err := l.loadCandlesticks(childCtx); err != nil {
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		if err := l.price.Run(childCtx); err != nil {
 			errCh <- err
 		}
 	}()
@@ -119,7 +127,7 @@ func (l *Loader) loadSymbolSnapshot(ctx context.Context) error {
 				var candlesticks []dto.Candlestick
 				err := backoff.Retry(func() error {
 					var err error
-					resp, err := l.client.SymbolSnapshot(ctx, "binance", symbol)
+					resp, err := l.client.SymbolSnapshot(ctx, domain.BinanceExchange, symbol)
 					if err != nil {
 						return errors.Wrap(err, "error get symbolSnapshot")
 					}
@@ -159,7 +167,7 @@ func (l *Loader) loadCandlesticks(ctx context.Context) error {
 		case <-ticker.C:
 			for _, symbol := range domain.SubscribeSymbols {
 				for _, interval := range domain.ListIntervals {
-					if err := l.fetchCandlesticks(ctx, "binance", symbol, interval); err != nil {
+					if err := l.fetchCandlesticks(ctx, domain.BinanceExchange, symbol, interval); err != nil {
 						zap.L().Error("error fetch candlesticks", zap.Error(err))
 					}
 				}

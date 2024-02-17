@@ -59,10 +59,13 @@ var rootCmd = &cobra.Command{
 		candlestickCache := cache.NewCandlestick()
 		candlestickStorage := storage.NewCandlestickComposite(candlestickCache, candlestickRepo)
 
-		loaderPrice := loader.NewLoader(loaderApp, priceStorage, candlestickStorage)
+		price := loader.NewPrice(loaderApp, symbolRepo, priceRepo)
+		loaderPrice := loader.NewLoader(loaderApp, priceStorage, candlestickStorage, price)
 		metricCalculator := calculation.NewChangeCoefficient(priceChangesRepo, aggregationRepo, symbolRepo)
 
-		priceController := controller.NewPrice(priceStorage, candlestickStorage, symbolRepo, priceChangesRepo)
+		techAnalysis := calculation.NewTechAnalysis(candlestickStorage)
+
+		priceController := controller.NewPrice(priceRepo, candlestickStorage, symbolRepo, priceChangesRepo)
 		if err != nil {
 			fmt.Println("Error init price controller: ", err.Error())
 			return
@@ -72,13 +75,13 @@ var rootCmd = &cobra.Command{
 
 		go func() {
 			defer cancel()
-			if err := loaderPrice.Run(ctx); err != nil && errors.Is(err, context.Canceled) {
+			if err := loaderPrice.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Printf("error execute loader price: %s \n", err.Error())
 			}
 		}()
 		go func() {
 			defer cancel()
-			if err := calculatorApp.Run(ctx, DefaultRecalculateDuration); err != nil {
+			if err := calculatorApp.Run(ctx, DefaultRecalculateDuration); err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Printf("error execute app: %s \n", err.Error())
 			}
 		}()
@@ -86,6 +89,12 @@ var rootCmd = &cobra.Command{
 			defer cancel()
 			if err := serv.Run(":8082"); err != nil {
 				fmt.Println("error execute server: ", err.Error())
+			}
+		}()
+		go func() {
+			defer cancel()
+			if err := techAnalysis.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				fmt.Println("error execute techAnalysis: ", err.Error())
 			}
 		}()
 

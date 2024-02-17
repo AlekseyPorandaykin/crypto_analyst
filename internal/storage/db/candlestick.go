@@ -59,7 +59,33 @@ VALUES %s ON CONFLICT (symbol, exchange, open_time, close_time, candle_interval)
 }
 
 func (repo *Candlestick) Candlesticks(ctx context.Context, exchange, symbol string, from, to time.Time) ([]dto.Candlestick, error) {
-	return nil, nil
+	var (
+		query = `
+SELECT symbol,
+       exchange,
+       open_time,
+       close_time,
+       open_price,
+       high_price,
+       low_price,
+       close_price,
+       volume,
+       number_trades,
+       candle_interval,
+       created_at
+FROM crypto_analyst.candlesticks
+WHERE exchange = $1 
+  AND symbol = $2
+AND created_at>= $3 AND created_at<=$4
+ORDER BY close_time
+`
+		result []dto.Candlestick
+	)
+	if err := repo.db.SelectContext(ctx, &result, query, exchange, symbol, from, to); err != nil {
+		return nil, err
+	}
+	return result, nil
+
 }
 
 func (repo *Candlestick) LastCandlestick(ctx context.Context, exchange, symbol, interval string) (*dto.Candlestick, error) {

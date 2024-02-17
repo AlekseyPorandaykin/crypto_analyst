@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -23,6 +24,20 @@ FROM (SELECT symbol, count(*) as total
       ORDER BY total DESC) AS temp
 `
 		symbols []string
+	)
+	if err := repo.db.SelectContext(ctx, &symbols, query); err != nil {
+		return nil, err
+	}
+	return symbols, nil
+}
+
+func (repo *Symbols) ExchangeSymbols(ctx context.Context) ([]dto.ExchangeSymbol, error) {
+	var (
+		query = `
+SELECT DISTINCT symbol, exchange
+FROM crypto_analyst.prices
+`
+		symbols []dto.ExchangeSymbol
 	)
 	if err := repo.db.SelectContext(ctx, &symbols, query); err != nil {
 		return nil, err

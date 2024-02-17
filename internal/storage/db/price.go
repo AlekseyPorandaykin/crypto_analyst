@@ -121,3 +121,45 @@ ORDER BY exchange ASC
 	}
 	return result, nil
 }
+
+func (repo *PriceRepository) AddNewSymbol(ctx context.Context, prices []domain.SymbolPrice) error {
+	var (
+		values []string
+	)
+
+	if len(prices) == 0 {
+		return nil
+	}
+	for _, price := range prices {
+		values = append(
+			values,
+			fmt.Sprintf(
+				"(%f,'%s', '%s','%s')",
+				price.Price, price.Symbol, price.Exchange, price.Date.Format(DatetimeFormat)),
+		)
+	}
+	query := fmt.Sprintf(
+		"INSERT INTO crypto_analyst.new_symbols(price, symbol,exchange,datetime) VALUES %s ON CONFLICT (symbol, exchange) DO NOTHING",
+		strings.Join(values, ", "),
+	)
+	_, err := repo.db.ExecContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (repo *PriceRepository) NewSymbols(ctx context.Context, from time.Time) ([]domain.SymbolPrice, error) {
+	var (
+		query = `
+SELECT price, symbol, exchange, datetime
+FROM crypto_analyst.new_symbols
+WHERE updated_at >= $1
+`
+		symbols []domain.SymbolPrice
+	)
+	if err := repo.db.SelectContext(ctx, &symbols, query, from); err != nil {
+		return nil, err
+	}
+	return symbols, nil
+}

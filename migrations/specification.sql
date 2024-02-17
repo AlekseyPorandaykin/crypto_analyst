@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS crypto_analyst.prices
 
 CREATE UNIQUE INDEX ON crypto_analyst.prices (price, symbol, exchange, datetime);
 
-CREATE INDEX exchange_idx ON crypto_analyst.prices (exchange);
-CREATE INDEX symbol_idx ON crypto_analyst.prices (symbol);
+CREATE INDEX prices_exchange_idx ON crypto_analyst.prices (exchange);
+CREATE INDEX prices_symbol_idx ON crypto_analyst.prices (symbol);
 
 alter table crypto_analyst.prices
     owner to crypto_app;
@@ -81,3 +81,22 @@ CREATE UNIQUE INDEX ON crypto_analyst.candlesticks (symbol, exchange, open_time,
 CREATE INDEX candlesticks_exchange_idx ON crypto_analyst.candlesticks (exchange);
 CREATE INDEX candlesticks_symbol_idx ON crypto_analyst.candlesticks (symbol);
 CREATE INDEX candlesticks_interval_idx ON crypto_analyst.candlesticks (candle_interval);
+
+
+CREATE TABLE IF NOT EXISTS crypto_analyst.new_symbols
+(
+    price      double precision NOT NULL,
+    symbol     VARCHAR(50)      NOT NULL,
+    exchange   VARCHAR(50)      NOT NULL,
+    datetime   TIMESTAMP        NOT NULL,
+    updated_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX ON crypto_analyst.new_symbols (price, symbol, exchange, datetime);
+
+CREATE INDEX new_symbols_exchange_idx ON crypto_analyst.new_symbols (exchange);
+CREATE INDEX new_symbols_symbol_idx ON crypto_analyst.new_symbols (symbol);
+CREATE UNIQUE INDEX ON crypto_analyst.new_symbols (symbol, exchange);
+
+alter table crypto_analyst.new_symbols
+    owner to crypto_app;
