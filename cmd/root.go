@@ -102,13 +102,13 @@ var rootCmd = &cobra.Command{
 				fmt.Println("error execute server: ", err.Error())
 			}
 		}()
-		//go func() {
-		//	defer shutdown.HandlePanic()
-		//	defer cancel()
-		//	if err := techAnalysis.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		//		fmt.Println("error execute techAnalysis: ", err.Error())
-		//	}
-		//}()
+		go func() {
+			defer shutdown.HandlePanic()
+			defer cancel()
+			if err := techAnalysis.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				fmt.Println("error execute techAnalysis: ", err.Error())
+			}
+		}()
 
 		go func() {
 			defer shutdown.HandlePanic()
