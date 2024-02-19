@@ -19,19 +19,18 @@ func NewTechAnalysis(candlestickLoader domain.CandlestickLoader) *TechAnalysis {
 }
 
 func (ta *TechAnalysis) Run(ctx context.Context) error {
-	//ticker := time.NewTicker(time.Minute)
-	//defer ticker.Stop()
-	//for {
-	//	select {
-	//	case <-ctx.Done():
-	//		return ctx.Err()
-	//	case <-ticker.C:
-	//		if err := ta.loadCandlesticks(ctx); err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
-	return nil
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if err := ta.loadCandlesticks(ctx); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func (ta *TechAnalysis) loadCandlesticks(ctx context.Context) error {
