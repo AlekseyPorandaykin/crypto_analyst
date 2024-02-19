@@ -37,12 +37,15 @@ func NewPrice(
 	}
 }
 
-func (app *Price) RegistrationRoute(e *echo.Echo) {
+func (app *Price) RegistrationPageRoute(e *echo.Group) {
 	e.GET("/price", app.index)
 	e.GET("/price/:symbol", app.symbolPrice)
 	e.GET("/price/:exchange/:symbol/changes", app.changes)
 	e.GET("/price/snapshot/:exchange/:symbol", app.snapshot)
-	e.GET("/api/price/new", app.newPrices)
+}
+
+func (app *Price) RegistrationApiRoute(e *echo.Group) {
+	e.GET("/price/new", app.newPrices)
 }
 
 func (app *Price) index(c echo.Context) error {

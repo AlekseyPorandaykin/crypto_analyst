@@ -7,13 +7,16 @@ import (
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/calculation"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/controller"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/loader"
-	http_server "github.com/AlekseyPorandaykin/crypto_analyst/internal/server/http"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/cache"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
+	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/database"
+	http_server "github.com/AlekseyPorandaykin/crypto_analyst/pkg/server/http"
+	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/shutdown"
 	"github.com/AlekseyPorandaykin/crypto_loader/api/http/client"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -27,7 +30,7 @@ var rootCmd = &cobra.Command{
 		const DefaultPriceAggregationDuration = 1 * time.Hour
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
-		connect, err := db.CreateConnect(db.Config{
+		connect, err := database.CreateConnection(database.Config{
 			Driver:   "postgres",
 			Username: "crypto_app",
 			Password: "developer",
@@ -71,34 +74,45 @@ var rootCmd = &cobra.Command{
 			return
 		}
 		serv := http_server.NewServer()
-		serv.Registration(priceController)
+		defer serv.Close()
+		serv.RegistrationPage(priceController)
+		serv.RegistrationApi(priceController)
+		serv.WithAuthor("developer")
+		serv.WithApplicationName("crypto_analyst")
 
 		go func() {
+			defer shutdown.HandlePanic()
 			defer cancel()
 			if err := loaderPrice.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Printf("error execute loader price: %s \n", err.Error())
 			}
 		}()
 		go func() {
+			defer shutdown.HandlePanic()
 			defer cancel()
 			if err := calculatorApp.Run(ctx, DefaultRecalculateDuration); err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Printf("error execute app: %s \n", err.Error())
 			}
 		}()
 		go func() {
+			defer shutdown.HandlePanic()
 			defer cancel()
-			if err := serv.Run(":8082"); err != nil {
+			if err := serv.Run(net.JoinHostPort("localhost", "8082")); err != nil {
 				fmt.Println("error execute server: ", err.Error())
 			}
 		}()
 		go func() {
+			defer shutdown.HandlePanic()
 			defer cancel()
 			if err := techAnalysis.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Println("error execute techAnalysis: ", err.Error())
 			}
 		}()
 
-		go metricCalculator.Run(ctx, DefaultPriceAggregationDuration)
+		go func() {
+			defer shutdown.HandlePanic()
+			metricCalculator.Run(ctx, DefaultPriceAggregationDuration)
+		}()
 
 		<-ctx.Done()
 	},

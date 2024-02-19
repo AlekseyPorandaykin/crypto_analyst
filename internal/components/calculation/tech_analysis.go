@@ -55,7 +55,8 @@ func (ta *TechAnalysis) loadCandlesticks(ctx context.Context) error {
 	closePrices := techan.NewClosePriceIndicator(series)
 	movingAverage := techan.NewEMAIndicator(closePrices, 10) // Create an exponential moving average with a window of 10
 	trendlineIndicator := techan.NewTrendlineIndicator(closePrices, 10)
-	fmt.Println(movingAverage.Calculate(0).FormattedString(2), trendlineIndicator.Calculate(10))
+	fmt.Println("movingAverage", movingAverage.Calculate(0).FormattedString(2))
+	fmt.Println("trendlineIndicator", trendlineIndicator.Calculate(10))
 
 	return nil
 }

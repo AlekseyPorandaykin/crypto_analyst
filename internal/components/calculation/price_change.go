@@ -162,7 +162,7 @@ func (p *PriceChange) loadSymbolData(ctx context.Context, symbol string, from, t
 			keys = append(keys, key)
 		}
 
-		data[key][symbolPrice.Exchange] = float64(symbolPrice.Price)
+		data[key][symbolPrice.Exchange] = symbolPrice.Price
 	}
 	return data, keys, nil
 }

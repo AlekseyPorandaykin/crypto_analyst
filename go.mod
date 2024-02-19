@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/jmoiron/sqlx v1.3.5
+	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.18.0
