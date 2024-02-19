@@ -3,10 +3,11 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
-	"github.com/jmoiron/sqlx"
 	"strings"
 	"time"
+
+	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
+	"github.com/jmoiron/sqlx"
 )
 
 type PriceRepository struct {
@@ -47,7 +48,7 @@ ORDER BY  datetime ASC
 }
 
 func (repo *PriceRepository) DeleteOldPrices(ctx context.Context, symbol string, to time.Time) error {
-	var query = `
+	query := `
 DELETE FROM crypto_analyst.prices WHERE symbol = $1 
   AND datetime < $2
 `
@@ -57,7 +58,7 @@ DELETE FROM crypto_analyst.prices WHERE symbol = $1
 }
 
 func (repo *PriceRepository) ClearOldPrices(ctx context.Context, to time.Time) error {
-	var query = `
+	query := `
 DELETE FROM crypto_analyst.prices WHERE  datetime < $1
 `
 	_, err := repo.db.ExecContext(ctx, query, to)
@@ -66,7 +67,7 @@ DELETE FROM crypto_analyst.prices WHERE  datetime < $1
 }
 
 func (repo *PriceRepository) DeletePrices(ctx context.Context, symbol string, from, to time.Time) error {
-	var query = `
+	query := `
 DELETE FROM crypto_analyst.prices WHERE symbol = $1 
   AND (datetime BETWEEN $2 AND $3)  
 `
@@ -76,9 +77,7 @@ DELETE FROM crypto_analyst.prices WHERE symbol = $1
 }
 
 func (repo *PriceRepository) SavePrices(ctx context.Context, prices []*domain.SymbolPrice) error {
-	var (
-		values []string
-	)
+	var values []string
 
 	if len(prices) == 0 {
 		return nil
@@ -123,9 +122,7 @@ ORDER BY exchange ASC
 }
 
 func (repo *PriceRepository) AddNewSymbol(ctx context.Context, prices []domain.SymbolPrice) error {
-	var (
-		values []string
-	)
+	var values []string
 
 	if len(prices) == 0 {
 		return nil

@@ -1,7 +1,5 @@
 HOME_PATH := $(shell pwd)
 
-DOCKER_DIR="./deployments/docker-compose.yaml"
-DOCKER_COMPOSE_DEV_FILE="./deployments/docker-compose-dev.yaml"
 MIGRATE_SQL := $(shell cat < ./migrations/specification.sql;)
 BIN := "./bin/crypto_analyst"
 VERSION :=$(shell date)
@@ -15,23 +13,6 @@ init:
 run: build
 	$(BIN) -config ./configs/default.toml
 
-run-img: build-img
-	docker run $(DOCKER_IMG)
-
-up:
-	docker-compose --file=$(DOCKER_DIR) up -d
-
-down:
-	docker-compose --file=$(DOCKER_DIR) down
-
-recreate:
-	docker-compose --file=$(DOCKER_DIR) rm -f
-	docker-compose --file=$(DOCKER_DIR) pull
-	docker-compose --file=$(DOCKER_DIR) up --build -d
-
-ps:
-	docker-compose --file=$(DOCKER_DIR) ps
-
 linters:
 	go vet .
 	gofmt -w .
@@ -41,7 +22,11 @@ linters:
 	golangci-lint run ./...
 	gofmt -s -l $(git ls-files '*.go')
 
-migrate:
-	docker-compose --file=$(DOCKER_DIR) exec pg psql -U crypto_app -d crypto_app -c "$(MIGRATE_SQL)"
+
+go-fix:
+	go mod tidy
+	gci write ./
+	gofumpt -l -w ./
+
 
 .PHONY: build run build-img run-img version test lint

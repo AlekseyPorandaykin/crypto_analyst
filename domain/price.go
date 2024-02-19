@@ -2,8 +2,9 @@ package domain
 
 import (
 	"context"
-	"github.com/duke-git/lancet/v2/datetime"
 	"time"
+
+	"github.com/duke-git/lancet/v2/datetime"
 )
 
 type SymbolPrice struct {
@@ -61,6 +62,7 @@ func ToDatetimeWithoutHour(val time.Time) time.Time {
 		time.UTC,
 	)
 }
+
 func ToDatetimeWeek(val time.Time) time.Time {
 	endOfWeek := datetime.EndOfWeek(val)
 	return time.Date(

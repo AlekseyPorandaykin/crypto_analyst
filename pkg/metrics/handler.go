@@ -2,11 +2,12 @@ package metrics
 
 import (
 	"errors"
+	"net"
+	"net/http"
+
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net"
-	"net/http"
 )
 
 func Handler(host, port string) error {

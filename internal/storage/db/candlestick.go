@@ -3,10 +3,11 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
-	"github.com/jmoiron/sqlx"
 	"strings"
 	"time"
+
+	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
+	"github.com/jmoiron/sqlx"
 )
 
 type Candlestick struct {
@@ -85,7 +86,6 @@ ORDER BY close_time
 		return nil, err
 	}
 	return result, nil
-
 }
 
 func (repo *Candlestick) LastCandlestick(ctx context.Context, exchange, symbol, interval string) (*dto.Candlestick, error) {

@@ -2,6 +2,10 @@ package loader
 
 import (
 	"context"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
@@ -9,9 +13,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"strconv"
-	"sync"
-	"time"
 )
 
 type Price struct {
@@ -31,6 +32,7 @@ func NewPrice(client *client.Client, symbolRepo *db.Symbols, priceRepo *db.Price
 		exchangeSymbols: make(map[string]map[string]bool),
 	}
 }
+
 func (p *Price) Run(ctx context.Context) error {
 	errCh := make(chan error)
 	for _, ex := range domain.ListExchanges {

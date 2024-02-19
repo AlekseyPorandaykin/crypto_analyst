@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/calculation"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/controller"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/loader"
@@ -16,11 +22,6 @@ import (
 	"github.com/AlekseyPorandaykin/crypto_loader/api/http/client"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"net"
-	"net/http"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 var rootCmd = &cobra.Command{

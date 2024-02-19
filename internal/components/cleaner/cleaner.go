@@ -2,8 +2,7 @@ package cleaner
 
 import "context"
 
-type Cleaner struct {
-}
+type Cleaner struct{}
 
 func NewCleaner() *Cleaner {
 	return &Cleaner{}

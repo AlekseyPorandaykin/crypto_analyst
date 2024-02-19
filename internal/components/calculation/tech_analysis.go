@@ -3,10 +3,11 @@ package calculation
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/sdcoffey/big"
 	"github.com/sdcoffey/techan"
-	"time"
 )
 
 type TechAnalysis struct {

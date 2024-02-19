@@ -1,11 +1,12 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type ApplicationInfo struct {
@@ -62,6 +63,7 @@ func NewServer() *Server {
 func (s *Server) WithAuthor(author string) {
 	s.info.Author = author
 }
+
 func (s *Server) WithApplicationName(name string) {
 	s.info.Application = name
 }
@@ -77,9 +79,11 @@ func (s *Server) WithIndexPage(path string) {
 func (s *Server) RegistrationPage(h PageHandler) {
 	h.RegistrationPageRoute(s.pageGroup)
 }
+
 func (s *Server) RegistrationApi(h ApiHandler) {
 	h.RegistrationApiRoute(s.apiGroup)
 }
+
 func (s *Server) RegistrationFilesHandler(h FilesHandler) {
 	h.RegistrationFilesRoute(s.fileGroup)
 }

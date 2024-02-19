@@ -2,9 +2,10 @@ package domain
 
 import (
 	"context"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"github.com/shopspring/decimal"
-	"time"
 )
 
 const (

@@ -2,10 +2,11 @@ package storage
 
 import (
 	"context"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type CandlestickComposite struct {

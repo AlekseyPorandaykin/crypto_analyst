@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"github.com/jmoiron/sqlx"
 )

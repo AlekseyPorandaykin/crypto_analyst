@@ -3,14 +3,15 @@ package calculation
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"math"
-	"time"
 )
 
 type ExchangePriceChanges map[string][]domain.PriceChange
@@ -103,7 +104,8 @@ func (s *ChangeCoefficient) Run(ctx context.Context, d time.Duration) {
 }
 
 func (s *ChangeCoefficient) executeChangeCoefficient(
-	ctx context.Context, m domain.MetricAggregationPrice) error {
+	ctx context.Context, m domain.MetricAggregationPrice,
+) error {
 	defer func(start time.Time) {
 		metric.CoefficientDuration.WithLabelValues(string(m)).Add(float64(time.Since(start).Milliseconds()))
 	}(time.Now())
@@ -132,7 +134,8 @@ func (s *ChangeCoefficient) executeChangeCoefficient(
 }
 
 func (s *ChangeCoefficient) executeIndicatorChanges(
-	ctx context.Context, m domain.MetricAggregationPrice) error {
+	ctx context.Context, m domain.MetricAggregationPrice,
+) error {
 	defer func(start time.Time) {
 		metric.CoefficientDuration.WithLabelValues(string(m)).Add(float64(time.Since(start).Milliseconds()))
 	}(time.Now())

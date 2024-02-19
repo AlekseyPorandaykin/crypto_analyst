@@ -3,10 +3,11 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
-	"github.com/jmoiron/sqlx"
 	"strings"
 	"time"
+
+	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
+	"github.com/jmoiron/sqlx"
 )
 
 type PriceChanges struct {
@@ -130,7 +131,7 @@ ORDER BY datetime DESC
 }
 
 func (repo *PriceChanges) DeleteOldRows(ctx context.Context, to time.Time) error {
-	var query = `
+	query := `
 DELETE FROM crypto_analyst.price_changes WHERE  datetime < $1
 `
 	_, err := repo.db.ExecContext(ctx, query, to)

@@ -1,9 +1,10 @@
 package shutdown
 
 import (
-	"go.uber.org/zap"
 	"os"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func HandlePanic() {

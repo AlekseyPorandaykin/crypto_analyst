@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type SymbolPrice struct {

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"

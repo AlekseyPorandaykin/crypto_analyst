@@ -2,9 +2,10 @@ package cache
 
 import (
 	"context"
-	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"sync"
 	"time"
+
+	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 )
 
 const LengthCandlestickData = 100

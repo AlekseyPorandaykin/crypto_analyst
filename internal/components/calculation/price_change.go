@@ -2,6 +2,8 @@ package calculation
 
 import (
 	"context"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/storage/db"
@@ -9,7 +11,6 @@ import (
 	"github.com/duke-git/lancet/v2/mathutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 )
 
 type exchangePrices map[time.Time]map[string]float64
@@ -23,7 +24,8 @@ type PriceChange struct {
 func NewChangeCalculator(
 	priceRepo *db.PriceRepository,
 	priceChangesRepo *db.PriceChanges,
-	symbolRepo *db.Symbols) *PriceChange {
+	symbolRepo *db.Symbols,
+) *PriceChange {
 	return &PriceChange{
 		priceRepo: priceRepo, priceChangesRepo: priceChangesRepo, symbolRepo: symbolRepo,
 	}
@@ -166,6 +168,7 @@ func (p *PriceChange) loadSymbolData(ctx context.Context, symbol string, from, t
 	}
 	return data, keys, nil
 }
+
 func (p *PriceChange) priceChanges(data exchangePrices, keys []time.Time, symbol string) []domain.PriceChange {
 	prevValues := make(map[string]float64)
 	result := make([]domain.PriceChange, 0, len(keys))

@@ -2,6 +2,12 @@ package controller
 
 import (
 	"fmt"
+	"html/template"
+	"io"
+	"net/http"
+	"sort"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/components/controller/templates"
@@ -9,11 +15,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"html/template"
-	"io"
-	"net/http"
-	"sort"
-	"time"
 )
 
 type Price struct {
@@ -70,7 +71,6 @@ func (app *Price) symbolPrice(c echo.Context) error {
 		return err
 	}
 	return executeTemplate("symbol_price", templates.SymbolHtmlPage, c.Response(), templates.PageData{Title: "Symbol " + symbol, Symbol: symbol, Data: prices})
-
 }
 
 func (app *Price) snapshot(c echo.Context) error {

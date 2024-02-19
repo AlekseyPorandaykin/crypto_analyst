@@ -2,6 +2,9 @@ package loader
 
 import (
 	"context"
+	"strconv"
+	"time"
+
 	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
 	"github.com/AlekseyPorandaykin/crypto_analyst/dto"
 	"github.com/AlekseyPorandaykin/crypto_analyst/internal/metric"
@@ -10,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 	_ "github.com/shopspring/decimal"
 	"go.uber.org/zap"
-	"strconv"
-	"time"
 )
 
 const DefaultLoadPriceDuration = 1 * time.Minute

@@ -3,10 +3,11 @@ package cache
 import (
 	"context"
 	"fmt"
-	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
-	"github.com/hashicorp/golang-lru/v2"
 	"sync"
 	"time"
+
+	"github.com/AlekseyPorandaykin/crypto_analyst/domain"
+	"github.com/hashicorp/golang-lru/v2"
 )
 
 var _ domain.PriceStorage = (*Price)(nil)
