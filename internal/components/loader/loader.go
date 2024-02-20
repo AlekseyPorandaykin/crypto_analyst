@@ -96,6 +96,9 @@ func (l *Loader) loadPrices(ctx context.Context) error {
 					zap.L().Error("error parse price", zap.Error(err))
 					continue
 				}
+				if price == 0 {
+					continue
+				}
 				prices = append(prices, &domain.SymbolPrice{
 					Exchange: item.Exchange,
 					Symbol:   item.Symbol,
