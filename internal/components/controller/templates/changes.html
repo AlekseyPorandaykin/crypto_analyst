@@ -16,8 +16,8 @@
             {{ range .Data}}
             <tr>
                 <td scope="row">{{.Date.Format "2006-01-02 15:04:05"}}</td>
-                <td>{{.String}}</td>
-                <td>{{.String}}</td>
+                <td>{{.PriceString}}</td>
+                <td>{{.PrevPriceString}}</td>
                 <td>{{.CoefficientOfChange}}</td>
             </tr>
             {{ end }}
