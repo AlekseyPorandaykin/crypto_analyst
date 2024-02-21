@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/trade"
 	"strconv"
 	"sync"
 	"time"
@@ -97,12 +98,23 @@ func (p *Price) loadExchangePrices(ctx context.Context, exchange string) error {
 			}
 			prices := make([]domain.SymbolPrice, 0, len(sourcePrices))
 			for _, item := range sourcePrices {
-				if _, has := p.exchangeSymbols[item.Exchange]; has && p.exchangeSymbols[item.Exchange][item.Symbol] {
+				if p.isEmptyExchangeSymbol(item.Exchange) {
+					continue
+				}
+				if p.hasExchangeSymbol(item.Exchange, item.Symbol) {
+					continue
+				}
+				if trade.IsEmptyPrice(item.Price) {
 					continue
 				}
 				price, err := strconv.ParseFloat(item.Price, 64)
 				if err != nil {
-					zap.L().Error("error parse price", zap.Error(err))
+					zap.L().Error(
+						"error parse price",
+						zap.Error(err),
+						zap.String("action", "ExchangePrices"),
+						zap.Any("source", item),
+					)
 					continue
 				}
 				if price == 0 {
@@ -146,4 +158,22 @@ func (p *Price) loadSymbols(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (p *Price) isEmptyExchangeSymbol(exchange string) bool {
+	p.muSymbols.Lock()
+	defer p.muSymbols.Unlock()
+	return len(p.exchangeSymbols[exchange]) == 0
+}
+
+func (p *Price) hasExchangeSymbol(exchange, symbol string) bool {
+	p.muSymbols.Lock()
+	defer p.muSymbols.Unlock()
+	if _, has := p.exchangeSymbols[exchange]; !has {
+		return false
+	}
+	if _, has := p.exchangeSymbols[exchange][symbol]; !has {
+		return false
+	}
+	return true
 }

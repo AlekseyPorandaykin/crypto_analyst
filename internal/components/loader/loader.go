@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/trade"
 	"strconv"
 	"time"
 
@@ -91,9 +92,18 @@ func (l *Loader) loadPrices(ctx context.Context) error {
 			}
 			prices := make([]*domain.SymbolPrice, 0, len(sourcePrices))
 			for _, item := range sourcePrices {
+				if trade.IsEmptyPrice(item.Price) {
+					continue
+				}
 				price, err := strconv.ParseFloat(item.Price, 64)
 				if err != nil {
-					zap.L().Error("error parse price", zap.Error(err))
+					trade.IsEmptyPrice(item.Price)
+					zap.L().Error(
+						"error parse price",
+						zap.Error(err),
+						zap.String("action", "AllSymbolPrices"),
+						zap.Any("source", item),
+					)
 					continue
 				}
 				if price == 0 {
