@@ -58,7 +58,7 @@ func (repo *PriceChanges) LastDatetimeSymbolRow(ctx context.Context, symbol stri
 		datetime time.Time
 	)
 	if err := repo.db.GetContext(ctx, &datetime, query, symbol); err != nil {
-		return time.Time{}, err
+		return time.Time{}, fmt.Errorf("load max created_at for symbol=%s (%s)", symbol, err.Error())
 	}
 	return datetime, nil
 }
