@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/duke-git/lancet/v2/datetime"
@@ -22,6 +23,13 @@ type PriceChange struct {
 	Price               float64   `json:"price" db:"price"`
 	PrevPrice           float64   `json:"prev_price" db:"prev_price"`
 	CreatedAt           time.Time `json:"created_at" db:"created_at"`
+}
+
+func (p PriceChange) PriceString() string {
+	return fmt.Sprintf("%.6f", p.Price)
+}
+func (p PriceChange) PrevPriceString() string {
+	return fmt.Sprintf("%.6f", p.PrevPrice)
 }
 
 func ToDatetimeWithoutSec(val time.Time) time.Time {
