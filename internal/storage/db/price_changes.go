@@ -134,7 +134,7 @@ func (repo *PriceChanges) DeleteOldRows(ctx context.Context, to time.Time) error
 	query := `
 DELETE FROM crypto_analyst.price_changes WHERE  datetime < $1
 `
-	_, err := repo.db.ExecContext(ctx, query, to)
+	_, err := repo.db.ExecContext(ctx, query, to.Format(time.DateTime))
 
 	return err
 }

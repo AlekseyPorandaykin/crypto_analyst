@@ -61,7 +61,7 @@ func (p *PriceChange) Run(ctx context.Context, d time.Duration) error {
 				errCh <- ctx.Err()
 			case <-ticker.C:
 				if err := p.priceChangesRepo.DeleteOldRows(ctx, time.Now().Add(-7*24*time.Hour)); err != nil {
-					errCh <- errors.Wrap(err, "error delete old rows price_changes")
+					zap.L().Error("error delete old rows price_changes", zap.Error(err))
 				}
 			}
 		}
