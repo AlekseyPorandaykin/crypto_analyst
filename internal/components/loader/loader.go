@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/shutdown"
 	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/trade"
 	"strconv"
 	"time"
@@ -39,22 +40,20 @@ func (l *Loader) Run(ctx context.Context) error {
 	defer cancel()
 	errCh := make(chan error)
 	go func() {
-		if err := l.loadPrices(childCtx); err != nil {
-			errCh <- err
-		}
-	}()
-	go func() {
+		defer shutdown.HandlePanic()
 		if err := l.loadSymbolSnapshot(childCtx); err != nil {
 			errCh <- err
 		}
 	}()
 	go func() {
+		defer shutdown.HandlePanic()
 		if err := l.loadCandlesticks(childCtx); err != nil {
 			errCh <- err
 		}
 	}()
 
 	go func() {
+		defer shutdown.HandlePanic()
 		if err := l.price.Run(childCtx); err != nil {
 			errCh <- err
 		}

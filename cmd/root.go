@@ -63,7 +63,7 @@ var rootCmd = &cobra.Command{
 		candlestickCache := cache.NewCandlestick()
 		candlestickStorage := storage.NewCandlestickComposite(candlestickCache, candlestickRepo)
 
-		price := loader.NewPrice(loaderApp, symbolRepo, priceRepo)
+		price := loader.NewPrice(loaderApp, symbolRepo, priceRepo, priceStorage)
 		loaderPrice := loader.NewLoader(loaderApp, priceStorage, candlestickStorage, price)
 		metricCalculator := calculation.NewChangeCoefficient(priceChangesRepo, aggregationRepo, symbolRepo)
 

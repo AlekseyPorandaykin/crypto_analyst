@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/shutdown"
 	"github.com/AlekseyPorandaykin/crypto_analyst/pkg/trade"
 	"strconv"
 	"sync"
@@ -17,20 +18,27 @@ import (
 )
 
 type Price struct {
-	client     *client.Client
-	symbolRepo *db.Symbols
-	priceRepo  *db.PriceRepository
+	client       *client.Client
+	symbolRepo   *db.Symbols
+	priceRepo    *db.PriceRepository
+	priceStorage domain.PriceSaver
 
 	exchangeSymbols map[string]map[string]bool
 	muSymbols       sync.Mutex
 }
 
-func NewPrice(client *client.Client, symbolRepo *db.Symbols, priceRepo *db.PriceRepository) *Price {
+func NewPrice(
+	client *client.Client,
+	symbolRepo *db.Symbols,
+	priceRepo *db.PriceRepository,
+	priceStorage domain.PriceSaver,
+) *Price {
 	return &Price{
 		client:          client,
 		symbolRepo:      symbolRepo,
 		priceRepo:       priceRepo,
 		exchangeSymbols: make(map[string]map[string]bool),
+		priceStorage:    priceStorage,
 	}
 }
 
@@ -39,12 +47,20 @@ func (p *Price) Run(ctx context.Context) error {
 	for _, ex := range domain.ListExchanges {
 		ex := ex
 		go func(exchange string) {
+			defer shutdown.HandlePanic()
 			if err := p.loadExchangePrices(ctx, ex); err != nil {
 				errCh <- err
 			}
 		}(ex)
 	}
 	go func() {
+		defer shutdown.HandlePanic()
+		if err := p.loadPrices(ctx); err != nil {
+			errCh <- err
+		}
+	}()
+	go func() {
+		defer shutdown.HandlePanic()
 		if err := p.loadSymbols(ctx); err != nil {
 			errCh <- err
 			return
@@ -158,6 +174,65 @@ func (p *Price) loadSymbols(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (p *Price) loadPrices(ctx context.Context) error {
+	ticker := time.NewTicker(DefaultLoadPriceDuration)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			var sourcePrices []client.PriceResponse
+			err := backoff.Retry(func() error {
+				var err error
+				sourcePrices, err = p.client.AllSymbolPrices(ctx)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, backoff.NewExponentialBackOff())
+			if err != nil {
+				return errors.Wrap(err, "error load price")
+			}
+			prices := make([]*domain.SymbolPrice, 0, len(sourcePrices))
+			for _, item := range sourcePrices {
+				if trade.IsEmptyPrice(item.Price) {
+					continue
+				}
+				price, err := strconv.ParseFloat(item.Price, 64)
+				if err != nil {
+					trade.IsEmptyPrice(item.Price)
+					zap.L().Error(
+						"error parse price",
+						zap.Error(err),
+						zap.String("action", "AllSymbolPrices"),
+						zap.Any("source", item),
+					)
+					continue
+				}
+				if price == 0 {
+					continue
+				}
+				prices = append(prices, &domain.SymbolPrice{
+					Exchange: item.Exchange,
+					Symbol:   item.Symbol,
+					Price:    price,
+					Date:     item.Date,
+				})
+			}
+			start := time.Now()
+			errSave := backoff.Retry(func() error {
+				return p.priceStorage.SavePrices(ctx, prices)
+			}, backoff.NewExponentialBackOff())
+			if errSave != nil {
+				zap.L().Error("error save symbolPrice", zap.Error(errSave))
+			}
+			metric.SavePriceDuration.Add(float64(time.Since(start).Milliseconds()))
+			metric.SavePrices.Add(float64(len(prices)))
+		}
+	}
 }
 
 func (p *Price) isEmptyExchangeSymbol(exchange string) bool {

@@ -207,7 +207,7 @@ func (p *PriceChange) priceChanges(data exchangePrices, keys []time.Time, symbol
 func (p *PriceChange) lastUpdateDatetime(ctx context.Context, symbol string) time.Time {
 	lastDatetime, err := p.priceChangesRepo.LastDatetimeSymbolRow(ctx, symbol)
 	if err != nil {
-		zap.L().Error("init last update avg coefficient datetime", zap.Error(err))
+		zap.L().Error("init last update avg coefficient datetime", zap.Error(err), zap.String("symbol", symbol))
 		return time.Now().Add(-360 * 24 * time.Hour)
 	}
 	if !lastDatetime.IsZero() {

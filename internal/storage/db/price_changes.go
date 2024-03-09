@@ -54,7 +54,7 @@ VALUES %s ON CONFLICT (symbol, exchange, datetime) DO NOTHING
 
 func (repo *PriceChanges) LastDatetimeSymbolRow(ctx context.Context, symbol string) (time.Time, error) {
 	var (
-		query    = `SELECT max(created_at) FROM crypto_analyst.price_changes WHERE symbol = $1`
+		query    = `SELECT coalesce(max(created_at), now() - interval '1 year')  FROM crypto_analyst.price_changes WHERE symbol = $1`
 		datetime time.Time
 	)
 	if err := repo.db.GetContext(ctx, &datetime, query, symbol); err != nil {
